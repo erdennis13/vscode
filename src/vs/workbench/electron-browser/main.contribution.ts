@@ -577,9 +577,9 @@ configurationRegistry.registerConfiguration({
 			'description': nls.localize('closeOnFocusLost', "Controls whether Quick Open should close automatically once it loses focus."),
 			'default': true
 		},
-		'workbench.quickOpen.prefill': {
+		'workbench.quickOpen.preserveInput': {
 			'type': 'boolean',
-			'description': nls.localize('workbench.quickOpen.prefill', "Controls whether to prefill Quick Open with the last input."),
+			'description': nls.localize('workbench.quickOpen.preserveInput', "Controls whether the last typed input to Quick Open should be restored when opening it the next time."),
 			'default': false
 		},
 		'workbench.settings.openDefaultSettings': {
@@ -597,6 +597,11 @@ configurationRegistry.registerConfiguration({
 			'enum': ['left', 'right'],
 			'default': 'left',
 			'description': nls.localize('sideBarLocation', "Controls the location of the sidebar. It can either show on the left or right of the workbench.")
+		},
+		'workbench.centeredLayoutAutoResize': {
+			'type': 'boolean',
+			'default': true,
+			'description': nls.localize('centeredLayoutAutoResize', "Controls if the centered layout should automatically resize to maximum width when more than one group is open. Once only one group is open it will resize back to the original centered width.")
 		},
 		'workbench.panel.defaultLocation': {
 			'type': 'string',
