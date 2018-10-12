@@ -13,7 +13,7 @@ function yarnInstall(location, opts) {
 	opts.cwd = location;
 	opts.stdio = 'inherit';
 
-	const result = cp.spawnSync(yarn, ['install'], opts);
+	const result = cp.spawnSync(yarn, ['install', '--pre-fetch-script \"node ../../../build/cloud-spool/cli.js retrieve -f ./yarn.lock\" --post-install-script \"node ../../../build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock\"'], opts);
 
 	if (result.error || result.status !== 0) {
 		process.exit(1);
