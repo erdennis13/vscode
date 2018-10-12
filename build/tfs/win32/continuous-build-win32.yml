@@ -8,8 +8,8 @@ steps:
     addToPath: true
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
-    printf -- "\r--install.pre-fetch-script \'node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
-    printf -- "\r--install.post-install-script \'node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
+    printf -- "\n--install.pre-fetch-script \"node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
+    printf -- "\n--install.post-install-script \"node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
     cat /D/a/1/s/.yarnrc
     yarn install
   displayName: Install Dependencies
@@ -45,11 +45,6 @@ steps:
     ArtifactName: build-artifacts-win32
     publishLocation: Container
   condition: eq(variables['System.PullRequest.IsFork'], 'False')
-- task: PublishBuildArtifacts@1
-  displayName: Publish yarnrc Artifacts
-  inputs:
-    PathtoPublish: '$(Build.SourcesDirectory)/.yarnrc'
-  condition: succeededOrFailed()
 - task: PublishTestResults@2
   displayName: Publish Tests Results
   inputs:
