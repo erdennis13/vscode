@@ -9,8 +9,8 @@ steps:
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
     printenv
-    printf -- "--install.pre-fetch-script \"node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
-    printf -- "--install.post-install-script \"node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
+    printf -- "\r--install.pre-fetch-script \"node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
+    printf -- "\r--install.post-install-script \"node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
     cat /D/a/1/s/.yarnrc
     yarn install
   displayName: Install Dependencies
