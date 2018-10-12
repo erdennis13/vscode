@@ -1,0 +1,19 @@
+{
+  "name": "build-cache",
+  "version": "1.0.0",
+  "description": "A tool to cache build artifacts",
+  "main": "index.js",
+  "author": "1ES CAT",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://1es-cat@dev.azure.com/1es-cat/build-cache/_git/build-cache"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "build-cache": "./cli.js"
+  },
+  "dependencies": {}
+}
