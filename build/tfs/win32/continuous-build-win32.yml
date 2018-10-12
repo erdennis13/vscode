@@ -6,15 +6,10 @@ steps:
   inputs:
     versionSpec: '2.x'
     addToPath: true
-- powershell: |
-    "" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append -Encoding "String"
-    "--install.pre-fetch-script ""node $(Build.SourcesDirectory)\build\cloud-spool\cli.js retrieve -f ./yarn.lock""" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append -Encoding "String"
-    "" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append -Encoding "String"
-    "--install.post-install-script ""node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock""" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append -Encoding "String"
-  displayName: Inject yarnrc caching
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
-    printenv
+    printf -- "\r--install.pre-fetch-script \'node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
+    printf -- "\r--install.post-install-script \'node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
     cat /D/a/1/s/.yarnrc
     yarn install
   displayName: Install Dependencies
@@ -50,6 +45,11 @@ steps:
     ArtifactName: build-artifacts-win32
     publishLocation: Container
   condition: eq(variables['System.PullRequest.IsFork'], 'False')
+- task: PublishBuildArtifacts@1
+  displayName: Publish yarnrc Artifacts
+  inputs:
+    PathtoPublish: '$(Build.SourcesDirectory)/.yarnrc'
+  condition: succeededOrFailed()
 - task: PublishTestResults@2
   displayName: Publish Tests Results
   inputs:
