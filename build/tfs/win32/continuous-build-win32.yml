@@ -8,8 +8,8 @@ steps:
     addToPath: true
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
-    echo -n "--install.pre-fetch-script \"node D/a/1/s/build/cloud-spool/cli.js retrieve -f ./yarn.lock\"" >> D/a/1/s/.yarnrc
-    echo -n "--install.post-install-script \"node D/a/1/s/build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock\"" >> D/a/1/s/.yarnrc
+    printf "--install.pre-fetch-script \"node /D/a/1/s/build/cloud-spool/cli.js retrieve -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
+    printf "--install.post-install-script \"node /D/a/1/s/build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock\"" >> /D/a/1/s/.yarnrc
     yarn install
   displayName: Install Dependencies
 - powershell: |
