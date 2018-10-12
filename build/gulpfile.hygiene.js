@@ -35,7 +35,8 @@ const all = [
 	'src/**/*',
 	'test/**/*',
 	'!**/node_modules/**',
-	'!build/yarn-custom/**'
+	'!build/yarn-custom/**',
+	'!build/cloud-spool/**'
 ];
 
 const indentationFilter = [
