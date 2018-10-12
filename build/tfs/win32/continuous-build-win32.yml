@@ -10,11 +10,11 @@ steps:
     set PreFetch=--install.pre-fetch-script "node /d/a/1/s/build/cloud-spool/cli.js retrieve -f ./yarn.lock"
     set PostInstall=--install.post-install-script "node /d/a/1/s/build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock"
 
-    ECHO. >> $(Build.SourcesDirectory)\.yarnrc
-    set /p=%PreFetch% <nul >> $(Build.SourcesDirectory)\.yarnrc
+    # ECHO. >> $(Build.SourcesDirectory)\.yarnrc
+    ECHO /p=%PreFetch% >> $(Build.SourcesDirectory)\.yarnrc
 
-    ECHO. >> $(Build.SourcesDirectory)\.yarnrc
-    set /p=%PostInstall% <nul >> $(Build.SourcesDirectory)\.yarnrc
+    # ECHO. >> $(Build.SourcesDirectory)\.yarnrc
+    ECHO /p=%PostInstall% >> $(Build.SourcesDirectory)\.yarnrc
   displayName: Set Yarnrc
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
