@@ -4,7 +4,7 @@ const cache = require('./index.js');
 const fs = require('fs');
 const pkg = require('./package.json');
 
-const [,, ...args] = process.argv;
+const [, , ...args] = process.argv;
 
 let cmd;
 let target;
@@ -38,7 +38,7 @@ for (let i = 0; i < args.length; i++) {
         fail(`Invalid command "${a}"`);
       } else if (target) {
         fail(`Invalid argument "${a}"`);
-      }  else {
+      } else {
         target = a;
       }
       break;

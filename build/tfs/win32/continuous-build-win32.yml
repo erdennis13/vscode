@@ -6,7 +6,7 @@ steps:
   inputs:
     versionSpec: '2.x'
     addToPath: true
-- script: |
+- bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
     yarn install
   displayName: Install Dependencies
