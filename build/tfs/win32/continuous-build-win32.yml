@@ -6,11 +6,18 @@ steps:
   inputs:
     versionSpec: '2.x'
     addToPath: true
+- powershell: |
+    # printf -- "\r--install.pre-fetch-script \'node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
+    # printf -- "\r--install.post-install-script \'node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
+
+    "" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append
+    "--install.pre-fetch-script ""node $(Build.SourcesDirectory)\build\cloud-spool\cli.js retrieve -f ./yarn.lock""" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append
+    "" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append
+    "--install.post-install-script ""node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock""" | Out-File "$(Build.SourcesDirectory)\.yarnrc" -Append
+  displayName: Inject yarnrc caching
 - bash: |
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
     printenv
-    printf -- "\r--install.pre-fetch-script \'node D:\a\1\s\build\cloud-spool\cli.js retrieve -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
-    printf -- "\r--install.post-install-script \'node D:\a\1\s\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock\'" >> /D/a/1/s/.yarnrc
     cat /D/a/1/s/.yarnrc
     yarn install
   displayName: Install Dependencies
