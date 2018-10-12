@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-const spawn = cp.spawn;
 const exec = util.promisify(cp.exec);
 const readFile = util.promisify(fs.readFile);
 const stat = util.promisify(fs.stat);
@@ -19,17 +18,17 @@ exports.downloadFromCache = async function(hashSourcePath, artifactDestinationPa
 exports.downloadFromCacheByHash = async function(sourceHash, artifactDestinationPath, sas) {
   const isWin = process.platform === "win32";
   let resolvedDestinationPath = path.resolve(artifactDestinationPath);
-  
+
   if (isWin) {
     resolvedDestinationPath = '/' + resolvedDestinationPath.replace(":","").replace(/\\/g, "/");
   }
-  
+
   if (isWin) {
     await stat(artifactDestinationPath); // ensure exists
   } else {
     await stat(resolvedDestinationPath); // ensure exists
   }
-  
+
   const url = CACHE_URL + sourceHash;
   const { stdout: response } = await exec(`curl "${url}"`, {stdio: 'inherit'});
 
@@ -38,7 +37,7 @@ exports.downloadFromCacheByHash = async function(sourceHash, artifactDestination
     if (!sas) {
       throw new Error('SAS not provided and BLOBCACHEACCESSKEY environment variable not set');
     }
-    
+
     const blobUrl = JSON.parse(response) + sas;
 
     const {stdout, stderr} = await exec(`curl -s "${blobUrl}" | tar xz -C "${resolvedDestinationPath}"`, {stdio: 'inherit'});
@@ -67,7 +66,7 @@ exports.uploadToCacheByHash = async function(sourceHash, artifactSourcePath) {
   let tarballPath = path.join(parentPath, sourceHash + '.tar.gz');
   let originalTarballPath = tarballPath;
   let url = CACHE_URL + sourceHash;
-  
+
   await stat(resolvedSourcePath); // ensure exists
 
   if (isWin) {
