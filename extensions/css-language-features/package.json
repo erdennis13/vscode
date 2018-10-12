@@ -20,7 +20,7 @@
     "compile": "gulp compile-extension:css-language-features-client compile-extension:css-language-features-server",
     "watch": "gulp watch-extension:css-language-features-client watch-extension:css-language-features-server",
     "test": "mocha",
-    "postinstall": "cd server && yarn install --pre-fetch-script \"node ../../../build/cloud-spool/cli.js retrieve -f ./yarn.lock\" --post-install-script \"node ../../../build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock\"",
+    "postinstall": "cd server && yarn install",
     "install-client-next": "yarn add vscode-languageclient@next"
   },
   "categories": [
