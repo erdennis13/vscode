@@ -1,8 +1,3 @@
-resources:
-  containers:
-  - container: node
-    image: node:8.12.0
-
 jobs:
 
 - job: macOS
@@ -12,9 +7,7 @@ jobs:
   - template: darwin/continuous-build-darwin.yml
 
 - job: Linux
-  pool:
-    vmImage: 'Ubuntu 16.04'
-  container: node
+  pool: Hosted Linux Preview
   steps:
   - template: linux/continuous-build-linux.yml
 

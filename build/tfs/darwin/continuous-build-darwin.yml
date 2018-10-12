@@ -4,6 +4,8 @@ steps:
     versionSpec: "8.12.0"
 - script: |
     export PATH="$(Build.SourcesDirectory)/build/yarn-custom/bin:$PATH"
+    echo "--install.pre-fetch-script "node $BUILD_SOURCESDIRECTORY/build/cloud-spool/cli.js retrieve -f ./yarn.lock"" >> .yarnrc
+    echo "--install.post-install-script "node $BUILD_SOURCESDIRECTORY/build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock"" >> .yarnrc
     yarn install
   displayName: Install Dependencies
 - script: |
