@@ -7,8 +7,8 @@ steps:
     versionSpec: '2.x'
     addToPath: true
 - script: |
-    set PreFetch=--install.pre-fetch-script "node $(Build.SourcesDirectory)\build\cloud-spool\cli.js retrieve -f ./yarn.lock"
-    set PostInstall=--install.post-install-script "node $(Build.SourcesDirectory)\build\cloud-spool\cli.js cache ./node_modules -f ./yarn.lock"
+    set PreFetch=--install.pre-fetch-script "node /d/a/1/s/build/cloud-spool/cli.js retrieve -f ./yarn.lock"
+    set PostInstall=--install.post-install-script "node /d/a/1/s/build/cloud-spool/cli.js cache ./node_modules -f ./yarn.lock"
     ECHO. >> $(Build.SourcesDirectory)\.yarnrc
     ECHO %PreFetch% >> $(Build.SourcesDirectory)\.yarnrc
     ECHO %PostInstall% >> $(Build.SourcesDirectory)\.yarnrc
