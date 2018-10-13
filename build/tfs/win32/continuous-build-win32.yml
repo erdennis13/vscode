@@ -14,6 +14,9 @@ steps:
     ECHO %PostInstall% >> $(Build.SourcesDirectory)\.yarnrc
   displayName: Set Yarnrc
 - bash: |
+    cd $(Build.SourcesDirectory)/build/cloud-spool
+    yarn install
+    cd $(Build.SourcesDirectory)
     export PATH="/D/a/1/s/build/yarn-custom/bin:$PATH"
     cat /d/a/1/s/.yarnrc
     yarn install
