@@ -55,19 +55,19 @@ if ((cmd !== runHelp) && (!(hash || file) || (hash && file))) {
 
 cmd();
 
-async function runCache() {
+function runCache() {
   if (!fs.existsSync(target)) {
     fail('Source path does not exist');
   }
 
   if (hash) {
-    await cache.uploadToCacheByHash(hash, target);
+    cache.uploadToCacheByHash(hash, target);
   } else if (file) {
-    await cache.uploadToCache(file, target);
+    cache.uploadToCache(file, target);
   }
 }
 
-async function runRetrieve() {
+function runRetrieve() {
   if (!fs.existsSync(target)) {
     fail('Destination path does not exist');
   }
@@ -78,9 +78,9 @@ async function runRetrieve() {
 
   let success;
   if (hash) {
-    success = await cache.downloadFromCacheByHash(hash, target, sas);
+    success = cache.downloadFromCacheByHash(hash, target, sas);
   } else if (file) {
-    success = await cache.downloadFromCache(file, target, sas);
+    success = cache.downloadFromCache(file, target, sas);
   }
 
   if (!success) {
