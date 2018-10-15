@@ -40,7 +40,7 @@ exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinatio
 
     const blobUrl = JSON.parse(response) + sas;
 
-    const { stdout, stderr } = await exec(`curl -s "${blobUrl}" | tar xz -C "${resolvedDestinationPath}"`, { stdio: 'inherit' });
+    const { stdout, stderr } = await exec(`curl -s \"${blobUrl}\" | tar xz -C "${resolvedDestinationPath}"`, { stdio: 'inherit' });
     if (stderr) {
       console.log(`error: ${stderr}`);
       return false;
