@@ -60,6 +60,7 @@ exports.uploadToCache = async function (hashSourcePath, artifactSourcePath) {
 exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
   const isWin = process.platform === "win32";
 
+  const originalSourcePath = path.resolve(artifactSourcePath);
   let resolvedSourcePath = path.resolve(artifactSourcePath);
   let sourceBasename = path.basename(resolvedSourcePath);
   let parentPath = path.join(resolvedSourcePath, '..');
@@ -67,7 +68,7 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
   let originalTarballPath = tarballPath;
   let url = CACHE_URL + sourceHash;
 
-  await stat(resolvedSourcePath); // ensure exists
+  // await stat(resolvedSourcePath); // ensure exists
 
   if (isWin) {
     resolvedSourcePath = '/' + resolvedSourcePath.replace(":", "").replace(/\\/g, "/");
@@ -76,19 +77,28 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
     tarballPath = '/' + tarballPath.replace(":", "").replace(/\\/g, "/");
   }
 
-  let { stdout, stderr } = await exec(`tar -czf "${tarballPath}" -C "${parentPath}" "${sourceBasename}"`, { stdio: 'inherit' });
-  if (stderr) {
-    console.error(`${stderr}`);
+  if (fs.existsSync(originalSourcePath)) {
+    console.log('uploading cache');
+    cp.execSync(`tar -czf "${tarballPath}" -C "${parentPath}" "${sourceBasename}"`);
+    cp.execSync(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`)
+    cp.execSync(`rm -rf ${tarballPath}`);
+    return true;
   }
-  if (stdout) {
-    console.log(`${stdout}`);
-  }
-  let { stdout2, stderr2 } = await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`, { stdio: 'inherit' });
-  if (stderr2) {
-    console.error(`error: ${stderr2}`);
-  }
-  console.log(`${stdout2}`);
-  await exec(`rm -rf ${tarballPath}`);
+  console.log('skipped uploading cache');
+  return false;
+  // let { stdout, stderr } = await exec(`tar -czf "${tarballPath}" -C "${parentPath}" "${sourceBasename}"`, { stdio: 'inherit' });
+  // if (stderr) {
+  //   console.error(`${stderr}`);
+  // }
+  // if (stdout) {
+  //   console.log(`${stdout}`);
+  // }
+  // let { stdout2, stderr2 } = await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`, { stdio: 'inherit' });
+  // if (stderr2) {
+  //   console.error(`error: ${stderr2}`);
+  // }
+  // console.log(`${stdout2}`);
+  // await exec(`rm -rf ${tarballPath}`);
 }
 
 exports.hashFile = async function (hashSourcePath) {
