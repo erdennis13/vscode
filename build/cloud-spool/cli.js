@@ -6,8 +6,6 @@ const pkg = require('./package.json');
 
 const [, , ...args] = process.argv;
 
-process.on('unhandledRejection', (reason, p) => { throw reason });
-
 let cmd;
 let target;
 let hash;
