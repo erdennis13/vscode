@@ -42,10 +42,10 @@ exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinatio
 
     try {
       await exec(`curl -s \"${blobUrl}\" | tar xz -C "${resolvedDestinationPath}"`);
-      return true;
     } catch (err) {
       console.log(err);
     }
+    return true;
   }
 
   return false;
