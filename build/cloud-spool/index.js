@@ -40,13 +40,12 @@ exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinatio
 
     const blobUrl = JSON.parse(response) + sas;
 
-    const { stdout, stderr } = await exec(`curl -s \"${blobUrl}\" | tar xz -C "${resolvedDestinationPath}"`, { stdio: 'inherit' });
-    if (stderr) {
-      console.log(`error: ${stderr}`);
-      return false;
+    try {
+      await exec(`curl -s \"${blobUrl}\" | tar xz -C "${resolvedDestinationPath}"`);
+      return true;
+    } catch (err) {
+      console.log(err);
     }
-    console.log(stdout);
-    return true;
   }
 
   return false;
@@ -78,7 +77,7 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
 
   // catch and ignore exceptions from win symlink error
   try {
-    await exec(`tar -C "${parentPath}" -chzf "${tarballPath}" "${sourceBasename}"`);
+    await exec(`tar -C "${parentPath}" -czf "${tarballPath}" "${sourceBasename}"`);
   } catch (err) {
     console.log(err);
   }
