@@ -60,7 +60,6 @@ exports.uploadToCache = async function (hashSourcePath, artifactSourcePath) {
 exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
   const isWin = process.platform === "win32";
 
-  const originalSourcePath = path.resolve(artifactSourcePath);
   let resolvedSourcePath = path.resolve(artifactSourcePath);
   let sourceBasename = path.basename(resolvedSourcePath);
   let parentPath = path.join(resolvedSourcePath, '..');
@@ -77,14 +76,9 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
     tarballPath = '/' + tarballPath.replace(":", "").replace(/\\/g, "/");
   }
 
+  // catch and ignore exceptions from win symlink error
   try {
-    let { stdout, stderr } = await exec(`tar -C "${parentPath}" -chzf "${tarballPath}" "${sourceBasename}"`);
-    if (stderr) {
-      console.error(`${stderr}`);
-    }
-    if (stdout) {
-      console.log(`${stdout}`);
-    }
+    await exec(`tar -C "${parentPath}" -chzf "${tarballPath}" "${sourceBasename}"`);
   } catch (err) {
     console.log(err);
   }
