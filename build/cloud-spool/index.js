@@ -77,7 +77,7 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
     tarballPath = '/' + tarballPath.replace(":", "").replace(/\\/g, "/");
   }
 
-  let { stdout, stderr } = await exec(`tar -czf "${tarballPath}" -C "${parentPath}" "${sourceBasename}"`, { stdio: 'inherit' });
+  let { stdout, stderr } = await exec(`tar --dereference -czf "${tarballPath}" -C "${parentPath}" "${sourceBasename}"`, { stdio: 'inherit' });
   if (stderr) {
     console.error(`${stderr}`);
   }
