@@ -77,15 +77,19 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
     tarballPath = '/' + tarballPath.replace(":", "").replace(/\\/g, "/");
   }
 
-  let { stdout, stderr } = await exec(`tar -C "${parentPath}" --dereference -czf "${tarballPath}" "${sourceBasename}"`);
-  if (stderr) {
-    console.error(`${stderr}`);
+  try {
+    let { stdout, stderr } = await exec(`tar -C "${parentPath}" -chzf "${tarballPath}" "${sourceBasename}"`);
+    if (stderr) {
+      console.error(`${stderr}`);
+    }
+    if (stdout) {
+      console.log(`${stdout}`);
+    }
+    await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`);
+    await exec(`rm -rf ${tarballPath}`);
+  } catch (err) {
+    console.log(err);
   }
-  if (stdout) {
-    console.log(`${stdout}`);
-  }
-  await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`);
-  await exec(`rm -rf ${tarballPath}`);
 }
 
 exports.hashFile = async function (hashSourcePath) {
