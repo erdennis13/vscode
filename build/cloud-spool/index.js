@@ -85,11 +85,12 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
     if (stdout) {
       console.log(`${stdout}`);
     }
-    await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`);
-    await exec(`rm -rf ${tarballPath}`);
   } catch (err) {
     console.log(err);
   }
+
+  await exec(`curl -X PUT -H "Content-Type: multipart/form-data" -F "file=@${originalTarballPath}" "${url}"`);
+  await exec(`rm -rf ${tarballPath}`);
 }
 
 exports.hashFile = async function (hashSourcePath) {
