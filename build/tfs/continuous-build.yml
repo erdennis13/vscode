@@ -5,11 +5,13 @@ jobs:
     vmImage: macOS 10.13
   steps:
   - template: darwin/continuous-build-darwin.yml
+  dependsOn: Windows
 
 - job: Linux
   pool: Hosted Linux Preview
   steps:
   - template: linux/continuous-build-linux.yml
+  dependsOn: Windows
 
 - job: Windows
   pool:
