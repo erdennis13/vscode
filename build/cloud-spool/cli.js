@@ -36,6 +36,7 @@ for (let i = 0; i < args.length; i++) {
       break;
     case '-cache-url':
       cacheUrl = args[++i];
+      break;
     default:
       if (!cmd) {
         fail(`Invalid command "${a}"`);
