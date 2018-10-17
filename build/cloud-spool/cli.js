@@ -11,6 +11,7 @@ let target;
 let hash;
 let file;
 let sas;
+let cacheUrl;
 
 for (let i = 0; i < args.length; i++) {
   let a = args[i];
@@ -33,6 +34,8 @@ for (let i = 0; i < args.length; i++) {
     case '-sas':
       sas = args[++i];
       break;
+    case '-cache-url':
+      cacheUrl = args[++i];
     default:
       if (!cmd) {
         fail(`Invalid command "${a}"`);
@@ -60,10 +63,14 @@ async function runCache() {
     fail('Source path does not exist');
   }
 
+  if (!cacheUrl) {
+    fail('Must provide the cache url (-cache-url)');
+  }
+
   if (hash) {
-    await cache.uploadToCacheByHash(hash, target);
+    await cache.uploadToCacheByHash(cacheUrl, hash, target);
   } else if (file) {
-    await cache.uploadToCache(file, target);
+    await cache.uploadToCache(cacheUrl, file, target);
   }
 }
 
@@ -72,15 +79,19 @@ async function runRetrieve() {
     fail('Destination path does not exist');
   }
 
+  if (!cacheUrl) {
+    fail('Must provide the cache url (-cache-url)');
+  }
+
   if (!sas && !process.env.BLOBCACHEACCESSKEY) {
     fail('Must provide a shared access signature (-sas) or set the BLOBCACHEACCESSKEY environment variable');
   }
 
   let success;
   if (hash) {
-    success = await cache.downloadFromCacheByHash(hash, target, sas);
+    success = await cache.downloadFromCacheByHash(cacheUrl, hash, target, sas);
   } else if (file) {
-    success = await cache.downloadFromCache(file, target, sas);
+    success = await cache.downloadFromCache(cacheUrl, file, target, sas);
   }
 
   if (!success) {

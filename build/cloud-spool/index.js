@@ -8,14 +8,14 @@ const exec = util.promisify(cp.exec);
 const readFile = util.promisify(fs.readFile);
 const stat = util.promisify(fs.stat);
 
-const CACHE_URL = 'https://cloudspool-dev.azurewebsites.net/api/vscodeyarncache/';
+// const CACHE_URL = 'https://cloudspool-dev.azurewebsites.net/api/vscodeyarncache/';
 
-exports.downloadFromCache = async function (hashSourcePath, artifactDestinationPath, sas) {
+exports.downloadFromCache = async function (cacheUrl, hashSourcePath, artifactDestinationPath, sas) {
   const hash = await exports.hashFile(hashSourcePath);
-  return await exports.downloadFromCacheByHash(hash, artifactDestinationPath, sas);
+  return await exports.downloadFromCacheByHash(cacheUrl, hash, artifactDestinationPath, sas);
 }
 
-exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinationPath, sas) {
+exports.downloadFromCacheByHash = async function (cacheUrl, sourceHash, artifactDestinationPath, sas) {
   const isWin = process.platform === "win32";
   let resolvedDestinationPath = path.resolve(artifactDestinationPath);
 
@@ -29,7 +29,7 @@ exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinatio
     await stat(resolvedDestinationPath); // ensure exists
   }
 
-  const url = CACHE_URL + sourceHash;
+  const url = cacheUrl + sourceHash;
   const { stdout: response } = await exec(`curl "${url}"`, { stdio: 'inherit' });
 
   if (response) {
@@ -51,12 +51,12 @@ exports.downloadFromCacheByHash = async function (sourceHash, artifactDestinatio
   return false;
 }
 
-exports.uploadToCache = async function (hashSourcePath, artifactSourcePath) {
+exports.uploadToCache = async function (cacheUrl, hashSourcePath, artifactSourcePath) {
   const hash = await exports.hashFile(hashSourcePath);
-  return await exports.uploadToCacheByHash(hash, artifactSourcePath);
+  return await exports.uploadToCacheByHash(cacheUrl, hash, artifactSourcePath);
 }
 
-exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
+exports.uploadToCacheByHash = async function (cacheUrl, sourceHash, artifactSourcePath) {
   const isWin = process.platform === "win32";
 
   let resolvedSourcePath = path.resolve(artifactSourcePath);
@@ -64,7 +64,7 @@ exports.uploadToCacheByHash = async function (sourceHash, artifactSourcePath) {
   let parentPath = path.join(resolvedSourcePath, '..');
   let tarballPath = path.join(parentPath, sourceHash + '.tar.gz');
   let originalTarballPath = tarballPath;
-  let url = CACHE_URL + sourceHash;
+  let url = cacheUrl + sourceHash;
 
   await stat(resolvedSourcePath); // ensure exists
 
