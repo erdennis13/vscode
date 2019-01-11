@@ -10,13 +10,12 @@ steps:
 - task: NodeTool@0
   inputs:
     versionSpec: "8.12.0"
-- task: EthanDennis-Microsoft.restore-cache-task.restore-cache-task.restore-cache@0
-  displayName: 'Restore a folder from a cache'
-  inputs:
-    keyfile: '**/yarn.lock'
-    targetfolder: 'node_modules'
-    cacheurl: '$(CacheUrl)'
-    cacheaccesskey: '$(CacheAccessKey)'
+# - task: EthanDennis-Microsoft.restore-cache-task.restore-cache-task.restore-cache@0
+#   inputs:
+#     keyfile: '**/yarn.lock'
+#     targetfolder: 'node_modules'
+#     cacheurl: '$(CacheUrl)'
+#     cacheaccesskey: '$(CacheAccessKey)'
 - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
   inputs:
     versionSpec: "1.10.1"
