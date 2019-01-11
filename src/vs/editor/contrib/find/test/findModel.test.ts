@@ -2,18 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+
 import * as assert from 'assert';
+import { CoreNavigationCommands } from 'vs/editor/browser/controller/coreCommands';
+import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { Cursor } from 'vs/editor/common/controller/cursor';
 import { Position } from 'vs/editor/common/core/position';
-import { Selection } from 'vs/editor/common/core/selection';
 import { Range } from 'vs/editor/common/core/range';
+import { Selection } from 'vs/editor/common/core/selection';
+import { PieceTreeTextBufferBuilder } from 'vs/editor/common/model/pieceTreeTextBuffer/pieceTreeTextBufferBuilder';
+import { TextModel } from 'vs/editor/common/model/textModel';
 import { FindModelBoundToEditorModel } from 'vs/editor/contrib/find/findModel';
 import { FindReplaceState } from 'vs/editor/contrib/find/findState';
 import { withTestCodeEditor } from 'vs/editor/test/browser/testCodeEditor';
-import { CoreNavigationCommands } from 'vs/editor/browser/controller/coreCommands';
-import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
-import { TextModel } from 'vs/editor/common/model/textModel';
-import { PieceTreeTextBufferBuilder } from 'vs/editor/common/model/pieceTreeTextBuffer/pieceTreeTextBufferBuilder';
 
 suite('FindModel', () => {
 
@@ -53,7 +54,7 @@ suite('FindModel', () => {
 	}
 
 	function _getFindState(editor: ICodeEditor) {
-		let model = editor.getModel();
+		let model = editor.getModel()!;
 		let currentFindMatches: Range[] = [];
 		let allFindMatches: Range[] = [];
 
@@ -75,8 +76,8 @@ suite('FindModel', () => {
 		};
 	}
 
-	function assertFindState(editor: ICodeEditor, cursor: number[], highlighted: number[], findDecorations: number[][]): void {
-		assert.deepEqual(fromRange(editor.getSelection()), cursor, 'cursor');
+	function assertFindState(editor: ICodeEditor, cursor: number[], highlighted: number[] | null, findDecorations: number[][]): void {
+		assert.deepEqual(fromRange(editor.getSelection()!), cursor, 'cursor');
 
 		let expectedState = {
 			highlighted: highlighted ? [highlighted] : [],
@@ -1176,7 +1177,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1190,7 +1191,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1203,7 +1204,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, hi!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, hi!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1215,7 +1216,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1226,7 +1227,7 @@ suite('FindModel', () => {
 				[6, 14, 6, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hi world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1235,7 +1236,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, hi!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, hi!" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1268,7 +1269,7 @@ suite('FindModel', () => {
 				[11, 10, 11, 13]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// blablablaciao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// blablablaciao');
 
 		findModel.replace();
 		assertFindState(
@@ -1280,7 +1281,7 @@ suite('FindModel', () => {
 				[11, 11, 11, 14]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// ciaoblablaciao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// ciaoblablaciao');
 
 		findModel.replace();
 		assertFindState(
@@ -1291,7 +1292,7 @@ suite('FindModel', () => {
 				[11, 12, 11, 15]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// ciaociaoblaciao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// ciaociaoblaciao');
 
 		findModel.replace();
 		assertFindState(
@@ -1300,7 +1301,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// ciaociaociaociao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// ciaociaociaociao');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1337,7 +1338,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, Hello!" << endl;');
 
 		findModel.replaceAll();
 		assertFindState(
@@ -1346,9 +1347,9 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, hi!" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, hi!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hi world again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1387,10 +1388,10 @@ suite('FindModel', () => {
 				[9, 1, 9, 3]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '  cout << "hello world, Hello!" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '  cout << "hello world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '  cout << "Hello world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(9), '  cout << "helloworld again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '  cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '  cout << "hello world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '  cout << "Hello world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(9), '  cout << "helloworld again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1419,7 +1420,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// ciaociaociaociao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// ciaociaociaociao');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1448,10 +1449,10 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(11), '// <');
-		assert.equal(editor.getModel().getLineContent(12), '\t><');
-		assert.equal(editor.getModel().getLineContent(13), '\t><');
-		assert.equal(editor.getModel().getLineContent(14), '\t>ciao');
+		assert.equal(editor.getModel()!.getLineContent(11), '// <');
+		assert.equal(editor.getModel()!.getLineContent(12), '\t><');
+		assert.equal(editor.getModel()!.getLineContent(13), '\t><');
+		assert.equal(editor.getModel()!.getLineContent(14), '\t>ciao');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1480,8 +1481,8 @@ suite('FindModel', () => {
 			[]
 		);
 
-		assert.equal(editor.getModel().getLineContent(2), '#bar "cool.h"');
-		assert.equal(editor.getModel().getLineContent(3), '#bar <iostream>');
+		assert.equal(editor.getModel()!.getLineContent(2), '#bar "cool.h"');
+		assert.equal(editor.getModel()!.getLineContent(3), '#bar <iostream>');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1670,7 +1671,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1682,7 +1683,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1693,7 +1694,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1702,7 +1703,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hi world again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1741,7 +1742,7 @@ suite('FindModel', () => {
 			]
 		);
 
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "Hello world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "Hello world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1753,7 +1754,7 @@ suite('FindModel', () => {
 				[7, 14, 7, 19],
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hi world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1764,7 +1765,7 @@ suite('FindModel', () => {
 				[7, 14, 7, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1773,7 +1774,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1797,9 +1798,9 @@ suite('FindModel', () => {
 
 		findModel.replaceAll();
 
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, Hello!" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hi world again" << endl;');
 
 		assertFindState(
 			editor,
@@ -1840,7 +1841,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1852,7 +1853,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hilo world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hilo world, Hello!" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1863,7 +1864,7 @@ suite('FindModel', () => {
 				[8, 14, 8, 19]
 			]
 		);
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hilo world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hilo world again" << endl;');
 
 		findModel.replace();
 		assertFindState(
@@ -1872,7 +1873,7 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "hilo world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "hilo world again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -1897,10 +1898,10 @@ suite('FindModel', () => {
 
 		findModel.replaceAll();
 
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello girl, Hello!" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hello girl again" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "Hello girl again" << endl;');
-		assert.equal(editor.getModel().getLineContent(9), '    cout << "hellogirl again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello girl, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hello girl again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "Hello girl again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(9), '    cout << "hellogirl again" << endl;');
 
 		assertFindState(
 			editor,
@@ -1930,8 +1931,8 @@ suite('FindModel', () => {
 
 		findModel.replaceAll();
 
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hello girl, Hello!" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '    cout << "Hello girl again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hello girl, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << "Hello girl again" << endl;');
 
 		assertFindState(
 			editor,
@@ -1968,9 +1969,9 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << " world, !" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '    cout << " world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(8), '    cout << " world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << " world, !" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << " world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(8), '    cout << " world again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();
@@ -2022,9 +2023,9 @@ suite('FindModel', () => {
 			null,
 			[]
 		);
-		assert.equal(editor.getModel().getLineContent(6), '    cout << "hi world, Hello!" << endl;');
-		assert.equal(editor.getModel().getLineContent(7), '    cout << "hi world again" << endl;');
-		assert.equal(editor.getModel().getLineContent(9), '    cout << "hiworld again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(6), '    cout << "hi world, Hello!" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(7), '    cout << "hi world again" << endl;');
+		assert.equal(editor.getModel()!.getLineContent(9), '    cout << "hiworld again" << endl;');
 
 		findModel.dispose();
 		findState.dispose();

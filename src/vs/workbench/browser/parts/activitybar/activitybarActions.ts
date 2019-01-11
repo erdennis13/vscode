@@ -4,24 +4,29 @@
  *--------------------------------------------------------------------------------------------*/
 
 import 'vs/css!./media/activityaction';
+import * as nls from 'vs/nls';
 import * as DOM from 'vs/base/browser/dom';
+import { StandardKeyboardEvent } from 'vs/base/browser/keyboardEvent';
+import { StandardMouseEvent } from 'vs/base/browser/mouseEvent';
 import { EventType as TouchEventType, GestureEvent } from 'vs/base/browser/touch';
 import { Action } from 'vs/base/common/actions';
-import { IContextMenuService } from 'vs/platform/contextview/browser/contextView';
-import { ViewletDescriptor } from 'vs/workbench/browser/viewlet';
-import { IActivity, IGlobalActivity } from 'vs/workbench/common/activity';
-import { dispose } from 'vs/base/common/lifecycle';
-import { IViewletService, } from 'vs/workbench/services/viewlet/browser/viewlet';
-import { IPartService, Parts } from 'vs/workbench/services/part/common/partService';
-import { IThemeService, ITheme, registerThemingParticipant, ICssStyleCollector } from 'vs/platform/theme/common/themeService';
-import { activeContrastBorder, focusBorder } from 'vs/platform/theme/common/colorRegistry';
-import { StandardMouseEvent } from 'vs/base/browser/mouseEvent';
 import { KeyCode } from 'vs/base/common/keyCodes';
-import { StandardKeyboardEvent } from 'vs/base/browser/keyboardEvent';
-import { ActivityAction, ActivityActionItem, ICompositeBarColors, ToggleCompositePinnedAction, ICompositeBar } from 'vs/workbench/browser/parts/compositeBarActions';
-import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
+import { dispose } from 'vs/base/common/lifecycle';
 import { URI } from 'vs/base/common/uri';
+import { SyncActionDescriptor } from 'vs/platform/actions/common/actions';
+import { IContextMenuService } from 'vs/platform/contextview/browser/contextView';
+import { Registry } from 'vs/platform/registry/common/platform';
+import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
+import { activeContrastBorder, focusBorder } from 'vs/platform/theme/common/colorRegistry';
+import { ICssStyleCollector, ITheme, IThemeService, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
+import { ActivityAction, ActivityActionItem, ICompositeBar, ICompositeBarColors, ToggleCompositePinnedAction } from 'vs/workbench/browser/parts/compositeBarActions';
+import { ViewletDescriptor } from 'vs/workbench/browser/viewlet';
+import { Extensions as ActionExtensions, IWorkbenchActionRegistry } from 'vs/workbench/common/actions';
+import { IActivity, IGlobalActivity } from 'vs/workbench/common/activity';
 import { ACTIVITY_BAR_FOREGROUND } from 'vs/workbench/common/theme';
+import { IActivityService } from 'vs/workbench/services/activity/common/activity';
+import { IPartService, Parts } from 'vs/workbench/services/part/common/partService';
+import { IViewletService } from 'vs/workbench/services/viewlet/browser/viewlet';
 
 export class ViewletActivityAction extends ActivityAction {
 
@@ -31,14 +36,14 @@ export class ViewletActivityAction extends ActivityAction {
 
 	constructor(
 		activity: IActivity,
-		@IViewletService private viewletService: IViewletService,
-		@IPartService private partService: IPartService,
-		@ITelemetryService private telemetryService: ITelemetryService
+		@IViewletService private readonly viewletService: IViewletService,
+		@IPartService private readonly partService: IPartService,
+		@ITelemetryService private readonly telemetryService: ITelemetryService
 	) {
 		super(activity);
 	}
 
-	run(event: any): Thenable<any> {
+	run(event: any): Promise<any> {
 		if (event instanceof MouseEvent && event.button === 2) {
 			return Promise.resolve(false); // do not run on right click
 		}
@@ -56,7 +61,8 @@ export class ViewletActivityAction extends ActivityAction {
 		// Hide sidebar if selected viewlet already visible
 		if (sideBarVisible && activeViewlet && activeViewlet.getId() === this.activity.id) {
 			this.logAction('hide');
-			return this.partService.setSideBarHidden(true);
+			this.partService.setSideBarHidden(true);
+			return Promise.resolve(null);
 		}
 
 		this.logAction('show');
@@ -78,19 +84,20 @@ export class ToggleViewletAction extends Action {
 
 	constructor(
 		private _viewlet: ViewletDescriptor,
-		@IPartService private partService: IPartService,
-		@IViewletService private viewletService: IViewletService
+		@IPartService private readonly partService: IPartService,
+		@IViewletService private readonly viewletService: IViewletService
 	) {
 		super(_viewlet.id, _viewlet.name);
 	}
 
-	run(): Thenable<any> {
+	run(): Promise<any> {
 		const sideBarVisible = this.partService.isVisible(Parts.SIDEBAR_PART);
 		const activeViewlet = this.viewletService.getActiveViewlet();
 
 		// Hide sidebar if selected viewlet already visible
 		if (sideBarVisible && activeViewlet && activeViewlet.getId() === this._viewlet.id) {
-			return this.partService.setSideBarHidden(true);
+			this.partService.setSideBarHidden(true);
+			return Promise.resolve(null);
 		}
 
 		return this.viewletService.openViewlet(this._viewlet.id, true);
@@ -152,7 +159,7 @@ export class GlobalActivityActionItem extends ActivityActionItem {
 
 		this.contextMenuService.showContextMenu({
 			getAnchor: () => location,
-			getActions: () => Promise.resolve(actions),
+			getActions: () => actions,
 			onHide: () => dispose(actions)
 		});
 	}
@@ -180,13 +187,84 @@ export class PlaceHolderViewletActivityAction extends ViewletActivityAction {
 export class PlaceHolderToggleCompositePinnedAction extends ToggleCompositePinnedAction {
 
 	constructor(id: string, compositeBar: ICompositeBar) {
-		super({ id, name: id, cssClass: void 0 }, compositeBar);
+		super({ id, name: id, cssClass: undefined }, compositeBar);
 	}
 
 	setActivity(activity: IActivity): void {
 		this.label = activity.name;
 	}
 }
+
+class SwitchSideBarViewAction extends Action {
+
+	constructor(
+		id: string,
+		name: string,
+		@IViewletService private readonly viewletService: IViewletService,
+		@IActivityService private readonly activityService: IActivityService
+	) {
+		super(id, name);
+	}
+
+	run(offset: number): Promise<any> {
+		const pinnedViewletIds = this.activityService.getPinnedViewletIds();
+
+		const activeViewlet = this.viewletService.getActiveViewlet();
+		if (!activeViewlet) {
+			return Promise.resolve(null);
+		}
+		let targetViewletId: string;
+		for (let i = 0; i < pinnedViewletIds.length; i++) {
+			if (pinnedViewletIds[i] === activeViewlet.getId()) {
+				targetViewletId = pinnedViewletIds[(i + pinnedViewletIds.length + offset) % pinnedViewletIds.length];
+				break;
+			}
+		}
+		return this.viewletService.openViewlet(targetViewletId, true);
+	}
+}
+
+export class PreviousSideBarViewAction extends SwitchSideBarViewAction {
+
+	static readonly ID = 'workbench.action.previousSideBarView';
+	static LABEL = nls.localize('previousSideBarView', 'Previous Side Bar View');
+
+	constructor(
+		id: string,
+		name: string,
+		@IViewletService viewletService: IViewletService,
+		@IActivityService activityService: IActivityService
+	) {
+		super(id, name, viewletService, activityService);
+	}
+
+	run(): Promise<any> {
+		return super.run(-1);
+	}
+}
+
+export class NextSideBarViewAction extends SwitchSideBarViewAction {
+
+	static readonly ID = 'workbench.action.nextSideBarView';
+	static LABEL = nls.localize('nextSideBarView', 'Next Side Bar View');
+
+	constructor(
+		id: string,
+		name: string,
+		@IViewletService viewletService: IViewletService,
+		@IActivityService activityService: IActivityService
+	) {
+		super(id, name, viewletService, activityService);
+	}
+
+	run(): Promise<any> {
+		return super.run(1);
+	}
+}
+
+const registry = Registry.as<IWorkbenchActionRegistry>(ActionExtensions.WorkbenchActions);
+registry.registerWorkbenchAction(new SyncActionDescriptor(PreviousSideBarViewAction, PreviousSideBarViewAction.ID, PreviousSideBarViewAction.LABEL), 'View: Open Previous Side Bar View', nls.localize('view', "View"));
+registry.registerWorkbenchAction(new SyncActionDescriptor(NextSideBarViewAction, NextSideBarViewAction.ID, NextSideBarViewAction.LABEL), 'View: Open Next Side Bar View', nls.localize('view', "View"));
 
 registerThemingParticipant((theme: ITheme, collector: ICssStyleCollector) => {
 

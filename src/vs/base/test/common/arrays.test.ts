@@ -262,19 +262,19 @@ suite('Arrays', () => {
 	}
 
 	test('coalesce', () => {
-		let a = arrays.coalesce([null, 1, null, 2, 3]);
+		let a: Array<number | undefined | null> = arrays.coalesce([null, 1, null, 2, 3]);
 		assert.equal(a.length, 3);
 		assert.equal(a[0], 1);
 		assert.equal(a[1], 2);
 		assert.equal(a[2], 3);
 
-		arrays.coalesce([null, 1, null, void 0, undefined, 2, 3]);
+		arrays.coalesce([null, 1, null, undefined, undefined, 2, 3]);
 		assert.equal(a.length, 3);
 		assert.equal(a[0], 1);
 		assert.equal(a[1], 2);
 		assert.equal(a[2], 3);
 
-		let b = [];
+		let b: number[] = [];
 		b[10] = 1;
 		b[20] = 2;
 		b[30] = 3;
@@ -284,7 +284,7 @@ suite('Arrays', () => {
 		assert.equal(b[1], 2);
 		assert.equal(b[2], 3);
 
-		let sparse = [];
+		let sparse: number[] = [];
 		sparse[0] = 1;
 		sparse[1] = 1;
 		sparse[17] = 1;
@@ -298,31 +298,31 @@ suite('Arrays', () => {
 	});
 
 	test('coalesce - inplace', function () {
-		let a = [null, 1, null, 2, 3];
-		arrays.coalesce(a, true);
+		let a: Array<number | undefined | null> = [null, 1, null, 2, 3];
+		arrays.coalesceInPlace(a);
 		assert.equal(a.length, 3);
 		assert.equal(a[0], 1);
 		assert.equal(a[1], 2);
 		assert.equal(a[2], 3);
 
-		a = [null, 1, null, void 0, undefined, 2, 3];
-		arrays.coalesce(a, true);
+		a = [null, 1, null, undefined!, undefined!, 2, 3];
+		arrays.coalesceInPlace(a);
 		assert.equal(a.length, 3);
 		assert.equal(a[0], 1);
 		assert.equal(a[1], 2);
 		assert.equal(a[2], 3);
 
-		let b = [];
+		let b: number[] = [];
 		b[10] = 1;
 		b[20] = 2;
 		b[30] = 3;
-		arrays.coalesce(b, true);
+		arrays.coalesceInPlace(b);
 		assert.equal(b.length, 3);
 		assert.equal(b[0], 1);
 		assert.equal(b[1], 2);
 		assert.equal(b[2], 3);
 
-		let sparse = [];
+		let sparse: number[] = [];
 		sparse[0] = 1;
 		sparse[1] = 1;
 		sparse[17] = 1;
@@ -331,7 +331,7 @@ suite('Arrays', () => {
 
 		assert.equal(sparse.length, 1002);
 
-		arrays.coalesce(sparse, true);
+		arrays.coalesceInPlace(sparse);
 		assert.equal(sparse.length, 5);
 	});
 });

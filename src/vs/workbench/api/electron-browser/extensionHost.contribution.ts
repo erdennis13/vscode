@@ -15,6 +15,7 @@ import { LanguageConfigurationFileHandler } from 'vs/workbench/parts/codeEditor/
 
 // --- mainThread participants
 import 'vs/workbench/api/node/apiCommands';
+import './mainThreadClipboard';
 import './mainThreadCommands';
 import './mainThreadConfiguration';
 import './mainThreadDebugService';
@@ -56,7 +57,7 @@ import './mainThreadWorkspace';
 export class ExtensionPoints implements IWorkbenchContribution {
 
 	constructor(
-		@IInstantiationService private instantiationService: IInstantiationService
+		@IInstantiationService private readonly instantiationService: IInstantiationService
 	) {
 		// Classes that handle extension points...
 		this.instantiationService.createInstance(JSONValidationExtensionPoint);

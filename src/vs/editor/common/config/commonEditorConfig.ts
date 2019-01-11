@@ -4,16 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as nls from 'vs/nls';
-import { Event, Emitter } from 'vs/base/common/event';
+import { Emitter, Event } from 'vs/base/common/event';
 import { Disposable } from 'vs/base/common/lifecycle';
 import * as objects from 'vs/base/common/objects';
 import * as platform from 'vs/base/common/platform';
-import { Extensions, IConfigurationRegistry, IConfigurationNode, ConfigurationScope } from 'vs/platform/configuration/common/configurationRegistry';
-import { Registry } from 'vs/platform/registry/common/platform';
-import * as editorCommon from 'vs/editor/common/editorCommon';
-import { FontInfo, BareFontInfo } from 'vs/editor/common/config/fontInfo';
-import { EditorZoom } from 'vs/editor/common/config/editorZoom';
 import * as editorOptions from 'vs/editor/common/config/editorOptions';
+import { EditorZoom } from 'vs/editor/common/config/editorZoom';
+import { BareFontInfo, FontInfo } from 'vs/editor/common/config/fontInfo';
+import * as editorCommon from 'vs/editor/common/editorCommon';
+import { ConfigurationScope, Extensions, IConfigurationNode, IConfigurationRegistry } from 'vs/platform/configuration/common/configurationRegistry';
+import { Registry } from 'vs/platform/registry/common/platform';
 import EDITOR_DEFAULTS = editorOptions.EDITOR_DEFAULTS;
 import EDITOR_FONT_DEFAULTS = editorOptions.EDITOR_FONT_DEFAULTS;
 import EDITOR_MODEL_DEFAULTS = editorOptions.EDITOR_MODEL_DEFAULTS;
@@ -33,7 +33,7 @@ export interface ITabFocus {
 export const TabFocus: ITabFocus = new class implements ITabFocus {
 	private _tabFocus: boolean = false;
 
-	private readonly _onDidChangeTabFocus: Emitter<boolean> = new Emitter<boolean>();
+	private readonly _onDidChangeTabFocus = new Emitter<boolean>();
 	public readonly onDidChangeTabFocus: Event<boolean> = this._onDidChangeTabFocus.event;
 
 	public getTabFocusMode(): boolean {
@@ -85,7 +85,6 @@ export abstract class CommonEditorConfiguration extends Disposable implements ed
 		this._rawOptions.parameterHints = objects.mixin({}, this._rawOptions.parameterHints || {});
 
 		this._validatedOptions = editorOptions.EditorOptionsValidator.validate(this._rawOptions, EDITOR_DEFAULTS);
-		this.editor = null;
 		this._isDominatedByLongLines = false;
 		this._lineNumbersDigitCount = 1;
 
@@ -430,6 +429,11 @@ const editorConfiguration: IConfigurationNode = {
 			'default': EDITOR_DEFAULTS.viewInfo.scrollbar.mouseWheelScrollSensitivity,
 			'markdownDescription': nls.localize('mouseWheelScrollSensitivity', "A multiplier to be used on the `deltaX` and `deltaY` of mouse wheel scroll events.")
 		},
+		'editor.fastScrollSensitivity': {
+			'type': 'number',
+			'default': EDITOR_DEFAULTS.viewInfo.scrollbar.fastScrollSensitivity,
+			'markdownDescription': nls.localize('fastScrollSensitivity', "Scrolling speed mulitiplier when pressing `Alt`.")
+		},
 		'editor.multiCursorModifier': {
 			'type': 'string',
 			'enum': ['ctrlCmd', 'alt'],
@@ -640,6 +644,11 @@ const editorConfiguration: IConfigurationNode = {
 			default: false,
 			description: nls.localize('suggest.localityBonus', "Controls whether sorting favours words that appear close to the cursor.")
 		},
+		'editor.suggest.shareSuggestSelections': {
+			type: 'boolean',
+			default: false,
+			markdownDescription: nls.localize('suggest.shareSuggestSelections', "Controls whether remembered suggestion selections are shared between multiple workspaces and windows (needs `#editor.suggestSelection#`).")
+		},
 		'editor.suggest.snippetsPreventQuickSuggestions': {
 			type: 'boolean',
 			default: true,
@@ -648,7 +657,7 @@ const editorConfiguration: IConfigurationNode = {
 		'editor.selectionHighlight': {
 			'type': 'boolean',
 			'default': EDITOR_DEFAULTS.contribInfo.selectionHighlight,
-			'description': nls.localize('selectionHighlight', "Controls whether the editor should highlight matches similar to the selection")
+			'description': nls.localize('selectionHighlight', "Controls whether the editor should highlight matches similar to the selection.")
 		},
 		'editor.occurrencesHighlight': {
 			'type': 'boolean',
@@ -675,6 +684,11 @@ const editorConfiguration: IConfigurationNode = {
 			'type': 'boolean',
 			'default': EDITOR_DEFAULTS.viewInfo.mouseWheelZoom,
 			'markdownDescription': nls.localize('mouseWheelZoom', "Zoom the font of the editor when using mouse wheel and holding `Ctrl`.")
+		},
+		'editor.cursorSmoothCaretAnimation': {
+			'type': 'boolean',
+			'default': EDITOR_DEFAULTS.viewInfo.cursorSmoothCaretAnimation,
+			'description': nls.localize('cursorSmoothCaretAnimation', "Controls whether the smooth caret animation should be enabled.")
 		},
 		'editor.cursorStyle': {
 			'type': 'string',
@@ -738,12 +752,12 @@ const editorConfiguration: IConfigurationNode = {
 		'editor.codeLens': {
 			'type': 'boolean',
 			'default': EDITOR_DEFAULTS.contribInfo.codeLens,
-			'description': nls.localize('codeLens', "Controls whether the editor shows CodeLens")
+			'description': nls.localize('codeLens', "Controls whether the editor shows CodeLens.")
 		},
 		'editor.folding': {
 			'type': 'boolean',
 			'default': EDITOR_DEFAULTS.contribInfo.folding,
-			'description': nls.localize('folding', "Controls whether the editor has code folding enabled")
+			'description': nls.localize('folding', "Controls whether the editor has code folding enabled.")
 		},
 		'editor.foldingStrategy': {
 			'type': 'string',
@@ -866,12 +880,12 @@ const editorConfiguration: IConfigurationNode = {
 	}
 };
 
-let cachedEditorConfigurationKeys: { [key: string]: boolean; } = null;
+let cachedEditorConfigurationKeys: { [key: string]: boolean; } | null = null;
 function getEditorConfigurationKeys(): { [key: string]: boolean; } {
 	if (cachedEditorConfigurationKeys === null) {
-		cachedEditorConfigurationKeys = Object.create(null);
-		Object.keys(editorConfiguration.properties).forEach((prop) => {
-			cachedEditorConfigurationKeys[prop] = true;
+		cachedEditorConfigurationKeys = <{ [key: string]: boolean; }>Object.create(null);
+		Object.keys(editorConfiguration.properties!).forEach((prop) => {
+			cachedEditorConfigurationKeys![prop] = true;
 		});
 	}
 	return cachedEditorConfigurationKeys;

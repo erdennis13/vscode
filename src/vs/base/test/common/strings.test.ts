@@ -320,7 +320,7 @@ suite('Strings', () => {
 	});
 
 	test('fuzzyContains', () => {
-		assert.ok(!strings.fuzzyContains(void 0, null));
+		assert.ok(!strings.fuzzyContains((undefined)!, null!));
 		assert.ok(strings.fuzzyContains('hello world', 'h'));
 		assert.ok(!strings.fuzzyContains('hello world', 'q'));
 		assert.ok(strings.fuzzyContains('hello world', 'hw'));
@@ -390,5 +390,17 @@ suite('Strings', () => {
 		].forEach(([inStr, result]) => {
 			assert.equal(strings.uppercaseFirstLetter(inStr), result, `Wrong result for ${inStr}`);
 		});
+	});
+
+	test('getNLines', () => {
+		assert.equal(strings.getNLines('', 5), '');
+		assert.equal(strings.getNLines('foo', 5), 'foo');
+		assert.equal(strings.getNLines('foo\nbar', 5), 'foo\nbar');
+		assert.equal(strings.getNLines('foo\nbar', 2), 'foo\nbar');
+
+		assert.equal(strings.getNLines('foo\nbar', 1), 'foo');
+		assert.equal(strings.getNLines('foo\nbar'), 'foo');
+		assert.equal(strings.getNLines('foo\nbar\nsomething', 2), 'foo\nbar');
+		assert.equal(strings.getNLines('foo', 0), '');
 	});
 });

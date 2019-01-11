@@ -17,14 +17,17 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	private _closeTimeout: any;
 	private _ptyProcess: pty.IPty;
 	private _currentTitle: string = '';
+	private _processStartupComplete: Promise<void>;
+	private _isDisposed: boolean = false;
+	private _titleInterval: NodeJS.Timer | null = null;
 
-	private readonly _onProcessData: Emitter<string> = new Emitter<string>();
+	private readonly _onProcessData = new Emitter<string>();
 	public get onProcessData(): Event<string> { return this._onProcessData.event; }
-	private readonly _onProcessExit: Emitter<number> = new Emitter<number>();
+	private readonly _onProcessExit = new Emitter<number>();
 	public get onProcessExit(): Event<number> { return this._onProcessExit.event; }
-	private readonly _onProcessIdReady: Emitter<number> = new Emitter<number>();
+	private readonly _onProcessIdReady = new Emitter<number>();
 	public get onProcessIdReady(): Event<number> { return this._onProcessIdReady.event; }
-	private readonly _onProcessTitleChanged: Emitter<string> = new Emitter<string>();
+	private readonly _onProcessTitleChanged = new Emitter<string>();
 	public get onProcessTitleChanged(): Event<string> { return this._onProcessTitleChanged.event; }
 
 	constructor(
@@ -32,11 +35,12 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 		cwd: string,
 		cols: number,
 		rows: number,
-		env: platform.IProcessEnvironment
+		env: platform.IProcessEnvironment,
+		windowsEnableConpty: boolean
 	) {
 		let shellName: string;
 		if (os.platform() === 'win32') {
-			shellName = path.basename(shellLaunchConfig.executable);
+			shellName = path.basename(shellLaunchConfig.executable || '');
 		} else {
 			// Using 'xterm-256color' here helps ensure that the majority of Linux distributions will use a
 			// color prompt as defined in the default ~/.bashrc file.
@@ -48,15 +52,22 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 			cwd,
 			env,
 			cols,
-			rows
+			rows,
+			experimentalUseConpty: windowsEnableConpty
 		};
 
 		try {
-			this._ptyProcess = pty.spawn(shellLaunchConfig.executable, shellLaunchConfig.args, options);
+			this._ptyProcess = pty.spawn(shellLaunchConfig.executable!, shellLaunchConfig.args || [], options);
+			this._processStartupComplete = new Promise<void>(c => {
+				this.onProcessIdReady((pid) => {
+					c();
+				});
+			});
 		} catch (error) {
 			// The only time this is expected to happen is when the file specified to launch with does not exist.
 			this._exitCode = 2;
 			this._queueProcessExit();
+			this._processStartupComplete = Promise.resolve(undefined);
 			return;
 		}
 		this._ptyProcess.on('data', (data) => {
@@ -79,6 +90,11 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	}
 
 	public dispose(): void {
+		this._isDisposed = true;
+		if (this._titleInterval) {
+			clearInterval(this._titleInterval);
+		}
+		this._titleInterval = null;
 		this._onProcessData.dispose();
 		this._onProcessExit.dispose();
 		this._onProcessIdReady.dispose();
@@ -91,7 +107,7 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 			this._sendProcessTitle();
 		}, 0);
 		// Setup polling
-		setInterval(() => {
+		this._titleInterval = setInterval(() => {
 			if (this._currentTitle !== this._ptyProcess.process) {
 				this._sendProcessTitle();
 			}
@@ -108,15 +124,22 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	}
 
 	private _kill(): void {
-		// Attempt to kill the pty, it may have already been killed at this
-		// point but we want to make sure
-		try {
-			this._ptyProcess.kill();
-		} catch (ex) {
-			// Swallow, the pty has already been killed
-		}
-		this._onProcessExit.fire(this._exitCode);
-		this.dispose();
+		// Wait to kill to process until the start up code has run. This prevents us from firing a process exit before a
+		// process start.
+		this._processStartupComplete.then(() => {
+			if (this._isDisposed) {
+				return;
+			}
+			// Attempt to kill the pty, it may have already been killed at this
+			// point but we want to make sure
+			try {
+				this._ptyProcess.kill();
+			} catch (ex) {
+				// Swallow, the pty has already been killed
+			}
+			this._onProcessExit.fire(this._exitCode);
+			this.dispose();
+		});
 	}
 
 	private _sendProcessId() {
@@ -124,6 +147,9 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	}
 
 	private _sendProcessTitle(): void {
+		if (this._isDisposed) {
+			return;
+		}
 		this._currentTitle = this._ptyProcess.process;
 		this._onProcessTitleChanged.fire(this._currentTitle);
 	}
@@ -137,10 +163,16 @@ export class TerminalProcess implements ITerminalChildProcess, IDisposable {
 	}
 
 	public input(data: string): void {
+		if (this._isDisposed) {
+			return;
+		}
 		this._ptyProcess.write(data);
 	}
 
 	public resize(cols: number, rows: number): void {
+		if (this._isDisposed) {
+			return;
+		}
 		// Ensure that cols and rows are always >= 1, this prevents a native
 		// exception in winpty.
 		this._ptyProcess.resize(Math.max(cols, 1), Math.max(rows, 1));

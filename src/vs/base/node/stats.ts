@@ -5,7 +5,7 @@
 
 import { readdir, stat, exists, readFile } from 'fs';
 import { join } from 'path';
-import { parse } from 'vs/base/common/json';
+import { parse, ParseError } from 'vs/base/common/json';
 
 export interface WorkspaceStatItem {
 	name: string;
@@ -37,7 +37,7 @@ export function collectLaunchConfigs(folder: string): Promise<WorkspaceStatItem[
 						return resolve([]);
 					}
 
-					const errors = [];
+					const errors: ParseError[] = [];
 					const json = parse(contents.toString(), errors);
 					if (errors.length) {
 						console.log(`Unable to parse ${launchConfig}`);
@@ -49,9 +49,8 @@ export function collectLaunchConfigs(folder: string): Promise<WorkspaceStatItem[
 							const type = each['type'];
 							if (type) {
 								if (launchConfigs.has(type)) {
-									launchConfigs.set(type, launchConfigs.get(type) + 1);
-								}
-								else {
+									launchConfigs.set(type, launchConfigs.get(type)! + 1);
+								} else {
 									launchConfigs.set(type, 1);
 								}
 							}
@@ -93,7 +92,7 @@ export function collectWorkspaceStats(folder: string, filter: string[]): Promise
 	const MAX_FILES = 20000;
 
 	function walk(dir: string, filter: string[], token, done: (allFiles: string[]) => void): void {
-		let results = [];
+		let results: string[] = [];
 		readdir(dir, async (err, files) => {
 			// Ignore folders that can't be read
 			if (err) {
@@ -151,7 +150,7 @@ export function collectWorkspaceStats(folder: string, filter: string[]): Promise
 
 	let addFileType = (fileType: string) => {
 		if (fileTypes.has(fileType)) {
-			fileTypes.set(fileType, fileTypes.get(fileType) + 1);
+			fileTypes.set(fileType, fileTypes.get(fileType)! + 1);
 		}
 		else {
 			fileTypes.set(fileType, 1);
@@ -162,7 +161,7 @@ export function collectWorkspaceStats(folder: string, filter: string[]): Promise
 		for (const each of configFilePatterns) {
 			if (each.pattern.test(fileName)) {
 				if (configFiles.has(each.tag)) {
-					configFiles.set(each.tag, configFiles.get(each.tag) + 1);
+					configFiles.set(each.tag, configFiles.get(each.tag)! + 1);
 				} else {
 					configFiles.set(each.tag, 1);
 				}

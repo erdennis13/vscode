@@ -7,7 +7,6 @@ import 'vs/css!./media/scrollbar';
 import 'vs/css!./media/terminal';
 import 'vs/css!./media/xterm';
 import 'vs/css!./media/widgets';
-import * as debugActions from 'vs/workbench/parts/debug/browser/debugActions';
 import * as nls from 'vs/nls';
 import * as panel from 'vs/workbench/browser/panel';
 import * as platform from 'vs/base/common/platform';
@@ -17,27 +16,23 @@ import { getDefaultShell } from 'vs/workbench/parts/terminal/node/terminal';
 import { IWorkbenchActionRegistry, Extensions as ActionExtensions } from 'vs/workbench/common/actions';
 import { KeyCode, KeyMod } from 'vs/base/common/keyCodes';
 import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey';
-import { KillTerminalAction, ClearSelectionTerminalAction, CopyTerminalSelectionAction, CreateNewTerminalAction, CreateNewInActiveWorkspaceTerminalAction, FocusActiveTerminalAction, FocusNextTerminalAction, FocusPreviousTerminalAction, SelectDefaultShellWindowsTerminalAction, RunSelectedTextInTerminalAction, RunActiveFileInTerminalAction, ScrollDownTerminalAction, ScrollDownPageTerminalAction, ScrollToBottomTerminalAction, ScrollUpTerminalAction, ScrollUpPageTerminalAction, ScrollToTopTerminalAction, TerminalPasteAction, ToggleTerminalAction, ClearTerminalAction, AllowWorkspaceShellTerminalCommand, DisallowWorkspaceShellTerminalCommand, RenameTerminalAction, SelectAllTerminalAction, FocusTerminalFindWidgetAction, HideTerminalFindWidgetAction, DeleteWordLeftTerminalAction, DeleteWordRightTerminalAction, QuickOpenActionTermContributor, QuickOpenTermAction, TERMINAL_PICKER_PREFIX, MoveToLineStartTerminalAction, MoveToLineEndTerminalAction, SplitTerminalAction, SplitInActiveWorkspaceTerminalAction, FocusPreviousPaneTerminalAction, FocusNextPaneTerminalAction, ResizePaneLeftTerminalAction, ResizePaneRightTerminalAction, ResizePaneUpTerminalAction, ResizePaneDownTerminalAction, ScrollToPreviousCommandAction, ScrollToNextCommandAction, SelectToPreviousCommandAction, SelectToNextCommandAction, SelectToPreviousLineAction, SelectToNextLineAction, ToggleEscapeSequenceLoggingAction, SendSequenceTerminalCommand, ToggleRegexCommand, ToggleWholeWordCommand, ToggleCaseSensitiveCommand, FindNext, FindPrevious } from 'vs/workbench/parts/terminal/electron-browser/terminalActions';
+import { KillTerminalAction, ClearSelectionTerminalAction, CopyTerminalSelectionAction, CreateNewTerminalAction, CreateNewInActiveWorkspaceTerminalAction, FocusActiveTerminalAction, FocusNextTerminalAction, FocusPreviousTerminalAction, SelectDefaultShellWindowsTerminalAction, RunSelectedTextInTerminalAction, RunActiveFileInTerminalAction, ScrollDownTerminalAction, ScrollDownPageTerminalAction, ScrollToBottomTerminalAction, ScrollUpTerminalAction, ScrollUpPageTerminalAction, ScrollToTopTerminalAction, TerminalPasteAction, ToggleTerminalAction, ClearTerminalAction, AllowWorkspaceShellTerminalCommand, DisallowWorkspaceShellTerminalCommand, RenameTerminalAction, SelectAllTerminalAction, FocusTerminalFindWidgetAction, HideTerminalFindWidgetAction, DeleteWordLeftTerminalAction, DeleteWordRightTerminalAction, QuickOpenActionTermContributor, QuickOpenTermAction, TERMINAL_PICKER_PREFIX, MoveToLineStartTerminalAction, MoveToLineEndTerminalAction, SplitTerminalAction, SplitInActiveWorkspaceTerminalAction, FocusPreviousPaneTerminalAction, FocusNextPaneTerminalAction, ResizePaneLeftTerminalAction, ResizePaneRightTerminalAction, ResizePaneUpTerminalAction, ResizePaneDownTerminalAction, ScrollToPreviousCommandAction, ScrollToNextCommandAction, SelectToPreviousCommandAction, SelectToNextCommandAction, SelectToPreviousLineAction, SelectToNextLineAction, ToggleEscapeSequenceLoggingAction, SendSequenceTerminalCommand, ToggleRegexCommand, ToggleWholeWordCommand, ToggleCaseSensitiveCommand, FindNext, FindPrevious, DeleteToLineStartTerminalAction } from 'vs/workbench/parts/terminal/electron-browser/terminalActions';
 import { Registry } from 'vs/platform/registry/common/platform';
-import { ShowAllCommandsAction } from 'vs/workbench/parts/quickopen/browser/commandsHandler';
 import { SyncActionDescriptor } from 'vs/platform/actions/common/actions';
 import { TerminalService } from 'vs/workbench/parts/terminal/electron-browser/terminalService';
-import { ToggleTabFocusModeAction } from 'vs/editor/contrib/toggleTabFocusMode/toggleTabFocusMode';
 import { registerSingleton } from 'vs/platform/instantiation/common/extensions';
 import { KeybindingWeight } from 'vs/platform/keybinding/common/keybindingsRegistry';
-import { OpenNextRecentlyUsedEditorInGroupAction, OpenPreviousRecentlyUsedEditorInGroupAction, FocusActiveGroupAction, FocusFirstGroupAction, FocusLastGroupAction, OpenFirstEditorInGroup, OpenLastEditorInGroup } from 'vs/workbench/browser/parts/editor/editorActions';
 import { EDITOR_FONT_DEFAULTS } from 'vs/editor/common/config/editorOptions';
 import { registerColors } from 'vs/workbench/parts/terminal/common/terminalColorRegistry';
-import { NavigateUpAction, NavigateDownAction, NavigateLeftAction, NavigateRightAction } from 'vs/workbench/electron-browser/actions';
-import { QUICKOPEN_ACTION_ID, getQuickNavigateHandler, QUICKOPEN_FOCUS_SECONDARY_ACTION_ID } from 'vs/workbench/browser/parts/quickopen/quickopen';
+import { getQuickNavigateHandler } from 'vs/workbench/browser/parts/quickopen/quickopen';
 import { IQuickOpenRegistry, Extensions as QuickOpenExtensions, QuickOpenHandlerDescriptor } from 'vs/workbench/browser/quickopen';
 import { Scope, IActionBarRegistry, Extensions as ActionBarExtensions } from 'vs/workbench/browser/actions';
 import { CommandsRegistry } from 'vs/platform/commands/common/commands';
-import { TogglePanelAction } from 'vs/workbench/browser/parts/panel/panelActions';
 import { TerminalPanel } from 'vs/workbench/parts/terminal/electron-browser/terminalPanel';
 import { TerminalPickerHandler } from 'vs/workbench/parts/terminal/browser/terminalQuickOpen';
 import { setupTerminalCommands, TERMINAL_COMMAND_ID } from 'vs/workbench/parts/terminal/common/terminalCommands';
 import { setupTerminalMenu } from 'vs/workbench/parts/terminal/common/terminalMenu';
+import { DEFAULT_COMMANDS_TO_SKIP_SHELL } from 'vs/workbench/parts/terminal/electron-browser/terminalInstance';
 
 const quickOpenRegistry = (Registry.as<IQuickOpenRegistry>(QuickOpenExtensions.Quickopen));
 
@@ -198,9 +193,9 @@ configurationRegistry.registerConfiguration({
 			default: 1000
 		},
 		'terminal.integrated.setLocaleVariables': {
-			markdownDescription: nls.localize('terminal.integrated.setLocaleVariables', "Controls whether locale variables are set at startup of the terminal, this defaults to `true` on macOS, `false` on other platforms."),
+			markdownDescription: nls.localize('terminal.integrated.setLocaleVariables', "Controls whether locale variables are set at startup of the terminal."),
 			type: 'boolean',
-			default: platform.isMacintosh
+			default: true
 		},
 		'terminal.integrated.rendererType': {
 			type: 'string',
@@ -240,109 +235,12 @@ configurationRegistry.registerConfiguration({
 			default: false
 		},
 		'terminal.integrated.commandsToSkipShell': {
-			description: nls.localize('terminal.integrated.commandsToSkipShell', "A set of command IDs whose keybindings will not be sent to the shell and instead always be handled by Code. This allows the use of keybindings that would normally be consumed by the shell to act the same as when the terminal is not focused, for example ctrl+p to launch Quick Open."),
+			description: nls.localize('terminal.integrated.commandsToSkipShell', "A set of command IDs whose keybindings will not be sent to the shell and instead always be handled by Code. This allows the use of keybindings that would normally be consumed by the shell to act the same as when the terminal is not focused, for example ctrl+p to launch Quick Open.\nDefault Skipped Commands:\n\n{0}", DEFAULT_COMMANDS_TO_SKIP_SHELL.sort().map(command => `- ${command}`).join('\n')),
 			type: 'array',
 			items: {
 				type: 'string'
 			},
-			default: [
-				TERMINAL_COMMAND_ID.CLEAR_SELECTION,
-				TERMINAL_COMMAND_ID.CLEAR,
-				TERMINAL_COMMAND_ID.COPY_SELECTION,
-				TERMINAL_COMMAND_ID.DELETE_WORD_LEFT,
-				TERMINAL_COMMAND_ID.DELETE_WORD_RIGHT,
-				TERMINAL_COMMAND_ID.FIND_WIDGET_FOCUS,
-				TERMINAL_COMMAND_ID.FIND_WIDGET_HIDE,
-				TERMINAL_COMMAND_ID.FIND_NEXT_TERMINAL_FOCUS,
-				TERMINAL_COMMAND_ID.FIND_PREVIOUS_TERMINAL_FOCUS,
-				TERMINAL_COMMAND_ID.TOGGLE_FIND_REGEX_TERMINAL_FOCUS,
-				TERMINAL_COMMAND_ID.TOGGLE_FIND_WHOLE_WORD_TERMINAL_FOCUS,
-				TERMINAL_COMMAND_ID.TOGGLE_FIND_CASE_SENSITIVE_TERMINAL_FOCUS,
-				TERMINAL_COMMAND_ID.FOCUS_NEXT_PANE,
-				TERMINAL_COMMAND_ID.FOCUS_NEXT,
-				TERMINAL_COMMAND_ID.FOCUS_PREVIOUS_PANE,
-				TERMINAL_COMMAND_ID.FOCUS_PREVIOUS,
-				TERMINAL_COMMAND_ID.FOCUS,
-				TERMINAL_COMMAND_ID.KILL,
-				TERMINAL_COMMAND_ID.MOVE_TO_LINE_END,
-				TERMINAL_COMMAND_ID.MOVE_TO_LINE_START,
-				TERMINAL_COMMAND_ID.NEW_IN_ACTIVE_WORKSPACE,
-				TERMINAL_COMMAND_ID.NEW,
-				TERMINAL_COMMAND_ID.PASTE,
-				TERMINAL_COMMAND_ID.RESIZE_PANE_DOWN,
-				TERMINAL_COMMAND_ID.RESIZE_PANE_LEFT,
-				TERMINAL_COMMAND_ID.RESIZE_PANE_RIGHT,
-				TERMINAL_COMMAND_ID.RESIZE_PANE_UP,
-				TERMINAL_COMMAND_ID.RUN_ACTIVE_FILE,
-				TERMINAL_COMMAND_ID.RUN_SELECTED_TEXT,
-				TERMINAL_COMMAND_ID.SCROLL_DOWN_LINE,
-				TERMINAL_COMMAND_ID.SCROLL_DOWN_PAGE,
-				TERMINAL_COMMAND_ID.SCROLL_TO_BOTTOM,
-				TERMINAL_COMMAND_ID.SCROLL_TO_NEXT_COMMAND,
-				TERMINAL_COMMAND_ID.SCROLL_TO_PREVIOUS_COMMAND,
-				TERMINAL_COMMAND_ID.SCROLL_TO_TOP,
-				TERMINAL_COMMAND_ID.SCROLL_UP_LINE,
-				TERMINAL_COMMAND_ID.SCROLL_UP_PAGE,
-				TERMINAL_COMMAND_ID.SELECT_ALL,
-				TERMINAL_COMMAND_ID.SELECT_TO_NEXT_COMMAND,
-				TERMINAL_COMMAND_ID.SELECT_TO_NEXT_LINE,
-				TERMINAL_COMMAND_ID.SELECT_TO_PREVIOUS_COMMAND,
-				TERMINAL_COMMAND_ID.SELECT_TO_PREVIOUS_LINE,
-				TERMINAL_COMMAND_ID.SPLIT_IN_ACTIVE_WORKSPACE,
-				TERMINAL_COMMAND_ID.SPLIT,
-				TERMINAL_COMMAND_ID.TOGGLE,
-				ToggleTabFocusModeAction.ID,
-				QUICKOPEN_ACTION_ID,
-				QUICKOPEN_FOCUS_SECONDARY_ACTION_ID,
-				ShowAllCommandsAction.ID,
-				'workbench.action.tasks.build',
-				'workbench.action.tasks.restartTask',
-				'workbench.action.tasks.runTask',
-				'workbench.action.tasks.showLog',
-				'workbench.action.tasks.showTasks',
-				'workbench.action.tasks.terminate',
-				'workbench.action.tasks.test',
-				'workbench.action.toggleFullScreen',
-				'workbench.action.terminal.focusAtIndex1',
-				'workbench.action.terminal.focusAtIndex2',
-				'workbench.action.terminal.focusAtIndex3',
-				'workbench.action.terminal.focusAtIndex4',
-				'workbench.action.terminal.focusAtIndex5',
-				'workbench.action.terminal.focusAtIndex6',
-				'workbench.action.terminal.focusAtIndex7',
-				'workbench.action.terminal.focusAtIndex8',
-				'workbench.action.terminal.focusAtIndex9',
-				'workbench.action.focusSecondEditorGroup',
-				'workbench.action.focusThirdEditorGroup',
-				'workbench.action.focusFourthEditorGroup',
-				'workbench.action.focusFifthEditorGroup',
-				'workbench.action.focusSixthEditorGroup',
-				'workbench.action.focusSeventhEditorGroup',
-				'workbench.action.focusEighthEditorGroup',
-				debugActions.StartAction.ID,
-				debugActions.StopAction.ID,
-				debugActions.RunAction.ID,
-				debugActions.RestartAction.ID,
-				debugActions.ContinueAction.ID,
-				debugActions.PauseAction.ID,
-				debugActions.StepIntoAction.ID,
-				debugActions.StepOutAction.ID,
-				debugActions.StepOverAction.ID,
-				OpenNextRecentlyUsedEditorInGroupAction.ID,
-				OpenPreviousRecentlyUsedEditorInGroupAction.ID,
-				FocusActiveGroupAction.ID,
-				FocusFirstGroupAction.ID,
-				FocusLastGroupAction.ID,
-				OpenFirstEditorInGroup.ID,
-				OpenLastEditorInGroup.ID,
-				NavigateUpAction.ID,
-				NavigateDownAction.ID,
-				NavigateRightAction.ID,
-				NavigateLeftAction.ID,
-				TogglePanelAction.ID,
-				'workbench.action.quickOpenView',
-				'workbench.action.toggleMaximizedPanel'
-			].sort()
+			default: []
 		},
 		'terminal.integrated.env.osx': {
 			markdownDescription: nls.localize('terminal.integrated.env.osx', "Object with environment variables that will be added to the VS Code process to be used by the terminal on macOS. Set to `null` to delete the environment variable."),
@@ -372,6 +270,22 @@ configurationRegistry.registerConfiguration({
 			description: nls.localize('terminal.integrated.showExitAlert', "Controls whether to show the alert \"The terminal process terminated with exit code\" when exit code is non-zero."),
 			type: 'boolean',
 			default: true
+		},
+		'terminal.integrated.splitCwd': {
+			description: nls.localize('terminal.integrated.splitCwd', "Controls the working directory a split terminal starts with."),
+			type: 'string',
+			enum: ['workspaceRoot', 'initial', 'inherited'],
+			enumDescriptions: [
+				nls.localize('terminal.integrated.splitCwd.workspaceRoot', "A new split terminal will use the workspace root as the working directory. In a multi-root workspace a choice for which root folder to use is offered."),
+				nls.localize('terminal.integrated.splitCwd.initial', "A new split terminal will use the working directory that the parent terminal started with."),
+				nls.localize('terminal.integrated.splitCwd.inherited', "On macOS and Linux, a new split terminal will use the working directory of the parent terminal. On Windows, this behaves the same as initial."),
+			],
+			default: 'inherited'
+		},
+		'terminal.integrated.windowsEnableConpty': {
+			description: nls.localize('terminal.integrated.windowsEnableConpty', "Whether to use ConPTY for Windows terminal process communication (requires Windows 10 build number 17692+). Winpty will be used if this is false."),
+			type: 'boolean',
+			default: false
 		}
 	}
 });
@@ -411,12 +325,12 @@ actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(TerminalPasteAct
 	primary: KeyMod.CtrlCmd | KeyCode.KEY_V,
 	linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_V },
 	// Don't apply to Mac since cmd+v works
-	mac: { primary: null }
+	mac: { primary: 0 }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Paste into Active Terminal', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SelectAllTerminalAction, SelectAllTerminalAction.ID, SelectAllTerminalAction.LABEL, {
 	// Don't use ctrl+a by default as that would override the common go to start
 	// of prompt shell binding
-	primary: null,
+	primary: 0,
 	// Technically this doesn't need to be here as it will fall back to this
 	// behavior anyway when handed to xterm.js, having this handled by VS Code
 	// makes it easier for users to see how it works though.
@@ -453,8 +367,8 @@ actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ScrollToTopTermi
 	linux: { primary: KeyMod.Shift | KeyCode.Home }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Scroll to Top', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ClearTerminalAction, ClearTerminalAction.ID, ClearTerminalAction.LABEL, {
-	primary: KeyMod.CtrlCmd | KeyCode.KEY_K,
-	linux: { primary: null }
+	primary: 0,
+	mac: { primary: KeyMod.CtrlCmd | KeyCode.KEY_K }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS, KeybindingWeight.WorkbenchContrib + 1), 'Terminal: Clear', category);
 if (platform.isWindows) {
 	actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SelectDefaultShellWindowsTerminalAction, SelectDefaultShellWindowsTerminalAction.ID, SelectDefaultShellWindowsTerminalAction.LABEL), 'Terminal: Select Default Shell', category);
@@ -465,6 +379,9 @@ actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(RenameTerminalAc
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(FocusTerminalFindWidgetAction, FocusTerminalFindWidgetAction.ID, FocusTerminalFindWidgetAction.LABEL, {
 	primary: KeyMod.CtrlCmd | KeyCode.KEY_F
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Focus Find Widget', category);
+actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(FocusTerminalFindWidgetAction, FocusTerminalFindWidgetAction.ID, FocusTerminalFindWidgetAction.LABEL, {
+	primary: KeyMod.CtrlCmd | KeyCode.KEY_F
+}, KEYBINDING_CONTEXT_TERMINAL_FIND_WIDGET_FOCUSED), 'Terminal: Focus Find Widget', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(HideTerminalFindWidgetAction, HideTerminalFindWidgetAction.ID, HideTerminalFindWidgetAction.LABEL, {
 	primary: KeyCode.Escape,
 	secondary: [KeyMod.Shift | KeyCode.Escape]
@@ -477,12 +394,16 @@ actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(DeleteWordRightT
 	primary: KeyMod.CtrlCmd | KeyCode.Delete,
 	mac: { primary: KeyMod.Alt | KeyCode.Delete }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Delete Word Right', category);
+actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(DeleteToLineStartTerminalAction, DeleteToLineStartTerminalAction.ID, DeleteToLineStartTerminalAction.LABEL, {
+	primary: 0,
+	mac: { primary: KeyMod.CtrlCmd | KeyCode.Backspace }
+}, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Delete To Line Start', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(MoveToLineStartTerminalAction, MoveToLineStartTerminalAction.ID, MoveToLineStartTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyCode.LeftArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Move To Line Start', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(MoveToLineEndTerminalAction, MoveToLineEndTerminalAction.ID, MoveToLineEndTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyCode.RightArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Move To Line End', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SplitTerminalAction, SplitTerminalAction.ID, SplitTerminalAction.LABEL, {
@@ -511,39 +432,39 @@ actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(FocusNextPaneTer
 	}
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Focus Next Pane', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ResizePaneLeftTerminalAction, ResizePaneLeftTerminalAction.ID, ResizePaneLeftTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.LeftArrow },
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.LeftArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Resize Pane Left', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ResizePaneRightTerminalAction, ResizePaneRightTerminalAction.ID, ResizePaneRightTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.RightArrow },
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.RightArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Resize Pane Right', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ResizePaneUpTerminalAction, ResizePaneUpTerminalAction.ID, ResizePaneUpTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.UpArrow },
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.UpArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Resize Pane Up', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ResizePaneDownTerminalAction, ResizePaneDownTerminalAction.ID, ResizePaneDownTerminalAction.LABEL, {
-	primary: null,
+	primary: 0,
 	linux: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.DownArrow },
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.DownArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Resize Pane Down', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ScrollToPreviousCommandAction, ScrollToPreviousCommandAction.ID, ScrollToPreviousCommandAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyCode.UpArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Scroll To Previous Command', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(ScrollToNextCommandAction, ScrollToNextCommandAction.ID, ScrollToNextCommandAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyCode.DownArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Scroll To Next Command', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SelectToPreviousCommandAction, SelectToPreviousCommandAction.ID, SelectToPreviousCommandAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.UpArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Select To Previous Command', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SelectToNextCommandAction, SelectToNextCommandAction.ID, SelectToNextCommandAction.LABEL, {
-	primary: null,
+	primary: 0,
 	mac: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.DownArrow }
 }, KEYBINDING_CONTEXT_TERMINAL_FOCUS), 'Terminal: Select To Next Command', category);
 actionRegistry.registerWorkbenchAction(new SyncActionDescriptor(SelectToPreviousLineAction, SelectToPreviousLineAction.ID, SelectToPreviousLineAction.LABEL), 'Terminal: Select To Previous Line', category);

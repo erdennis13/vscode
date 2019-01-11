@@ -6,7 +6,6 @@
 import 'vs/css!./media/keybindings';
 import * as nls from 'vs/nls';
 import { OS } from 'vs/base/common/platform';
-import { TPromise } from 'vs/base/common/winjs.base';
 import { Disposable, dispose, toDisposable, IDisposable } from 'vs/base/common/lifecycle';
 import { Event, Emitter } from 'vs/base/common/event';
 import { KeybindingLabel } from 'vs/base/browser/ui/keybindingLabel/keybindingLabel';
@@ -27,6 +26,7 @@ import { SearchWidget, SearchOptions } from 'vs/workbench/parts/preferences/brow
 
 export interface KeybindingsSearchOptions extends SearchOptions {
 	recordEnter?: boolean;
+	quoteRecordedKeys?: boolean;
 }
 
 export class KeybindingsSearchWidget extends SearchWidget {
@@ -38,20 +38,20 @@ export class KeybindingsSearchWidget extends SearchWidget {
 	private recordDisposables: IDisposable[] = [];
 
 	private _onKeybinding = this._register(new Emitter<[ResolvedKeybinding, ResolvedKeybinding]>());
-	public readonly onKeybinding: Event<[ResolvedKeybinding, ResolvedKeybinding]> = this._onKeybinding.event;
+	readonly onKeybinding: Event<[ResolvedKeybinding, ResolvedKeybinding]> = this._onKeybinding.event;
 
 	private _onEnter = this._register(new Emitter<void>());
-	public readonly onEnter: Event<void> = this._onEnter.event;
+	readonly onEnter: Event<void> = this._onEnter.event;
 
 	private _onEscape = this._register(new Emitter<void>());
-	public readonly onEscape: Event<void> = this._onEscape.event;
+	readonly onEscape: Event<void> = this._onEscape.event;
 
 	private _onBlur = this._register(new Emitter<void>());
-	public readonly onBlur: Event<void> = this._onBlur.event;
+	readonly onBlur: Event<void> = this._onBlur.event;
 
 	constructor(parent: HTMLElement, options: SearchOptions,
 		@IContextViewService contextViewService: IContextViewService,
-		@IKeybindingService private keybindingService: IKeybindingService,
+		@IKeybindingService private readonly keybindingService: IKeybindingService,
 		@IInstantiationService instantiationService: IInstantiationService,
 		@IThemeService themeService: IThemeService
 	) {
@@ -81,12 +81,12 @@ export class KeybindingsSearchWidget extends SearchWidget {
 		dispose(this.recordDisposables);
 	}
 
-	public setInputValue(value: string): void {
+	setInputValue(value: string): void {
 		this._inputValue = value;
 		this.inputBox.value = this._inputValue;
 	}
 
-	public focus(): void {
+	focus(): void {
 		this.inputBox.focus();
 	}
 
@@ -113,6 +113,7 @@ export class KeybindingsSearchWidget extends SearchWidget {
 	private printKeybinding(keyboardEvent: IKeyboardEvent): void {
 		const keybinding = this.keybindingService.resolveKeyboardEvent(keyboardEvent);
 		const info = `code: ${keyboardEvent.browserEvent.code}, keyCode: ${keyboardEvent.browserEvent.keyCode}, key: ${keyboardEvent.browserEvent.key} => UI: ${keybinding.getAriaLabel()}, user settings: ${keybinding.getUserSettingsLabel()}, dispatch: ${keybinding.getDispatchParts()[0]}`;
+		const options = this.options as KeybindingsSearchOptions;
 
 		const hasFirstPart = (this._firstPart && this._firstPart.getDispatchParts()[0] !== null);
 		const hasChordPart = (this._chordPart && this._chordPart.getDispatchParts()[0] !== null);
@@ -133,7 +134,7 @@ export class KeybindingsSearchWidget extends SearchWidget {
 		if (this._chordPart) {
 			value = value + ' ' + this._chordPart.getUserSettingsLabel();
 		}
-		this.setInputValue(value);
+		this.setInputValue(options.quoteRecordedKeys ? `"${value}"` : value);
 
 		this.inputBox.inputElement.title = info;
 		this._onKeybinding.fire([this._firstPart, this._chordPart]);
@@ -150,22 +151,22 @@ export class DefineKeybindingWidget extends Widget {
 	private _outputNode: HTMLElement;
 	private _showExistingKeybindingsNode: HTMLElement;
 
-	private _firstPart: ResolvedKeybinding = null;
-	private _chordPart: ResolvedKeybinding = null;
+	private _firstPart: ResolvedKeybinding | null = null;
+	private _chordPart: ResolvedKeybinding | null = null;
 	private _isVisible: boolean = false;
 
 	private _onHide = this._register(new Emitter<void>());
 
 	private _onDidChange = this._register(new Emitter<String>());
-	public onDidChange: Event<String> = this._onDidChange.event;
+	onDidChange: Event<String> = this._onDidChange.event;
 
 	private _onShowExistingKeybindings = this._register(new Emitter<String>());
-	public readonly onShowExistingKeybidings: Event<String> = this._onShowExistingKeybindings.event;
+	readonly onShowExistingKeybidings: Event<String> = this._onShowExistingKeybindings.event;
 
 	constructor(
 		parent: HTMLElement,
-		@IInstantiationService private instantiationService: IInstantiationService,
-		@IThemeService private themeService: IThemeService
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IThemeService private readonly themeService: IThemeService
 	) {
 		super();
 		this.create();
@@ -178,9 +179,9 @@ export class DefineKeybindingWidget extends Widget {
 		return this._domNode.domNode;
 	}
 
-	define(): TPromise<string> {
+	define(): Promise<string> {
 		this._keybindingInputWidget.clear();
-		return new TPromise<string>((c, e) => {
+		return new Promise<string>((c) => {
 			if (!this._isVisible) {
 				this._isVisible = true;
 				this._domNode.setDisplay('block');
@@ -200,10 +201,10 @@ export class DefineKeybindingWidget extends Widget {
 	}
 
 	layout(layout: dom.Dimension): void {
-		let top = Math.round((layout.height - DefineKeybindingWidget.HEIGHT) / 2);
+		const top = Math.round((layout.height - DefineKeybindingWidget.HEIGHT) / 2);
 		this._domNode.setTop(top);
 
-		let left = Math.round((layout.width - DefineKeybindingWidget.WIDTH) / 2);
+		const left = Math.round((layout.width - DefineKeybindingWidget.WIDTH) / 2);
 		this._domNode.setLeft(left);
 	}
 
@@ -310,26 +311,26 @@ export class DefineKeybindingOverlayWidget extends Disposable implements IOverla
 		this._editor.addOverlayWidget(this);
 	}
 
-	public getId(): string {
+	getId(): string {
 		return DefineKeybindingOverlayWidget.ID;
 	}
 
-	public getDomNode(): HTMLElement {
+	getDomNode(): HTMLElement {
 		return this._widget.domNode;
 	}
 
-	public getPosition(): IOverlayWidgetPosition {
+	getPosition(): IOverlayWidgetPosition {
 		return {
 			preference: null
 		};
 	}
 
-	public dispose(): void {
+	dispose(): void {
 		this._editor.removeOverlayWidget(this);
 		super.dispose();
 	}
 
-	public start(): TPromise<string> {
+	start(): Promise<string> {
 		this._editor.revealPositionInCenterIfOutsideViewport(this._editor.getPosition(), ScrollType.Smooth);
 		const layoutInfo = this._editor.getLayoutInfo();
 		this._widget.layout(new dom.Dimension(layoutInfo.width, layoutInfo.height));

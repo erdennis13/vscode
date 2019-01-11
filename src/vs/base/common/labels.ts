@@ -11,7 +11,7 @@ import { isLinux, isWindows, isMacintosh } from 'vs/base/common/platform';
 import { isEqual } from 'vs/base/common/resources';
 
 export interface IWorkspaceFolderProvider {
-	getWorkspaceFolder(resource: URI): { uri: URI, name?: string };
+	getWorkspaceFolder(resource: URI): { uri: URI, name?: string } | null;
 	getWorkspace(): {
 		folders: { uri: URI, name?: string }[];
 	};
@@ -24,33 +24,31 @@ export interface IUserHomeProvider {
 /**
  * @deprecated use LabelService instead
  */
-export function getPathLabel(resource: URI | string, userHomeProvider: IUserHomeProvider, rootProvider?: IWorkspaceFolderProvider): string {
-	if (!resource) {
-		return null;
-	}
-
+export function getPathLabel(resource: URI | string, userHomeProvider?: IUserHomeProvider, rootProvider?: IWorkspaceFolderProvider): string {
 	if (typeof resource === 'string') {
 		resource = URI.file(resource);
 	}
 
 	// return early if we can resolve a relative path label from the root
-	const baseResource = rootProvider ? rootProvider.getWorkspaceFolder(resource) : null;
-	if (baseResource) {
-		const hasMultipleRoots = rootProvider.getWorkspace().folders.length > 1;
+	if (rootProvider) {
+		const baseResource = rootProvider.getWorkspaceFolder(resource);
+		if (baseResource) {
+			const hasMultipleRoots = rootProvider.getWorkspace().folders.length > 1;
 
-		let pathLabel: string;
-		if (isEqual(baseResource.uri, resource, !isLinux)) {
-			pathLabel = ''; // no label if paths are identical
-		} else {
-			pathLabel = normalize(ltrim(resource.path.substr(baseResource.uri.path.length), sep), true);
+			let pathLabel: string;
+			if (isEqual(baseResource.uri, resource, !isLinux)) {
+				pathLabel = ''; // no label if paths are identical
+			} else {
+				pathLabel = normalize(ltrim(resource.path.substr(baseResource.uri.path.length), sep)!, true);
+			}
+
+			if (hasMultipleRoots) {
+				const rootName = (baseResource && baseResource.name) ? baseResource.name : pathsBasename(baseResource.uri.fsPath);
+				pathLabel = pathLabel ? (rootName + ' • ' + pathLabel) : rootName; // always show root basename if there are multiple
+			}
+
+			return pathLabel;
 		}
-
-		if (hasMultipleRoots) {
-			const rootName = (baseResource && baseResource.name) ? baseResource.name : pathsBasename(baseResource.uri.fsPath);
-			pathLabel = pathLabel ? (rootName + ' • ' + pathLabel) : rootName; // always show root basename if there are multiple
-		}
-
-		return pathLabel;
 	}
 
 	// return if the resource is neither file:// nor untitled:// and no baseResource was provided
@@ -72,9 +70,11 @@ export function getPathLabel(resource: URI | string, userHomeProvider: IUserHome
 	return res;
 }
 
-export function getBaseLabel(resource: URI | string): string {
+export function getBaseLabel(resource: URI | string): string;
+export function getBaseLabel(resource: URI | string | undefined): string | undefined;
+export function getBaseLabel(resource: URI | string | undefined): string | undefined {
 	if (!resource) {
-		return null;
+		return undefined;
 	}
 
 	if (typeof resource === 'string') {
@@ -92,7 +92,7 @@ export function getBaseLabel(resource: URI | string): string {
 }
 
 function hasDriveLetter(path: string): boolean {
-	return isWindows && path && path[1] === ':';
+	return !!(isWindows && path && path[1] === ':');
 }
 
 export function normalizeDriveLetter(path: string): string {
@@ -110,7 +110,7 @@ export function tildify(path: string, userHome: string): string {
 	}
 
 	// Keep a normalized user home path as cache to prevent accumulated string creation
-	let normalizedUserHome = normalizedUserHomeCached.original === userHome ? normalizedUserHomeCached.normalized : void 0;
+	let normalizedUserHome = normalizedUserHomeCached.original === userHome ? normalizedUserHomeCached.normalized : undefined;
 	if (!normalizedUserHome) {
 		normalizedUserHome = `${rtrim(userHome, sep)}${sep}`;
 		normalizedUserHomeCached = { original: userHome, normalized: normalizedUserHome };
@@ -286,11 +286,8 @@ export function template(template: string, values: { [key: string]: string | ISe
 	const segments: ISegment[] = [];
 
 	let inVariable = false;
-	let char: string;
 	let curVal = '';
-	for (let i = 0; i < template.length; i++) {
-		char = template[i];
-
+	for (const char of template) {
 		// Beginning of variable
 		if (char === '$' || (inVariable && char === '{')) {
 			if (curVal) {
@@ -366,7 +363,7 @@ export function mnemonicMenuLabel(label: string, forceDisableMnemonics?: boolean
 
 /**
  * Handles mnemonics for buttons. Depending on OS:
- * - Windows: Supported via & character (replace && with &)
+ * - Windows: Supported via & character (replace && with & and & with && for escaping)
  * -   Linux: Supported via _ character (replace && with _)
  * -   macOS: Unsupported (replace && with empty string)
  */
@@ -375,7 +372,11 @@ export function mnemonicButtonLabel(label: string): string {
 		return label.replace(/\(&&\w\)|&&/g, '');
 	}
 
-	return label.replace(/&&/g, isWindows ? '&' : '_');
+	if (isWindows) {
+		return label.replace(/&&|&/g, m => m === '&' ? '&&' : '&');
+	}
+
+	return label.replace(/&&/g, '_');
 }
 
 export function unmnemonicLabel(label: string): string {

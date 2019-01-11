@@ -111,10 +111,10 @@ export class WatermarkContribution implements IWorkbenchContribution {
 
 	constructor(
 		@ILifecycleService lifecycleService: ILifecycleService,
-		@IPartService private partService: IPartService,
-		@IKeybindingService private keybindingService: IKeybindingService,
-		@IWorkspaceContextService private contextService: IWorkspaceContextService,
-		@IConfigurationService private configurationService: IConfigurationService
+		@IPartService private readonly partService: IPartService,
+		@IKeybindingService private readonly keybindingService: IKeybindingService,
+		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
+		@IConfigurationService private readonly configurationService: IConfigurationService
 	) {
 		this.workbenchState = contextService.getWorkbenchState();
 
@@ -200,7 +200,7 @@ export class WatermarkContribution implements IWorkbenchContribution {
 }
 
 Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench)
-	.registerWorkbenchContribution(WatermarkContribution, LifecyclePhase.Running);
+	.registerWorkbenchContribution(WatermarkContribution, LifecyclePhase.Restored);
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 	.registerConfiguration({

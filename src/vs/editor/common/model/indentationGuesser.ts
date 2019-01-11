@@ -111,8 +111,8 @@ export function guessIndentation(source: ITextBuffer, defaultTabSize: number, de
 	let previousLineText = '';						// content of latest line that contained non-whitespace chars
 	let previousLineIndentation = 0;				// index at which latest line contained the first non-whitespace char
 
-	const ALLOWED_TAB_SIZE_GUESSES = [2, 4, 6, 8];	// limit guesses for `tabSize` to 2, 4, 6 or 8.
-	const MAX_ALLOWED_TAB_SIZE_GUESS = 8;			// max(2,4,6,8) = 8
+	const ALLOWED_TAB_SIZE_GUESSES = [2, 4, 6, 8, 3, 5, 7];	// prefer even guesses for `tabSize`, limit to [2, 8].
+	const MAX_ALLOWED_TAB_SIZE_GUESS = 8;			// max(ALLOWED_TAB_SIZE_GUESSES) = 8
 
 	let spacesDiffCount = [0, 0, 0, 0, 0, 0, 0, 0, 0];		// `tabSize` scores
 	let tmp = new SpacesDiffResult();
@@ -188,6 +188,12 @@ export function guessIndentation(source: ITextBuffer, defaultTabSize: number, de
 			tabSize = possibleTabSize;
 		}
 	});
+
+	// Let a tabSize of 2 win even if it is not the maximum
+	// (only in case 4 was guessed)
+	if (tabSize === 4 && spacesDiffCount[4] > 0 && spacesDiffCount[2] > 0 && spacesDiffCount[2] >= spacesDiffCount[4] / 2) {
+		tabSize = 2;
+	}
 
 
 	// console.log('--------------------------');
