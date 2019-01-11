@@ -5,7 +5,7 @@ steps:
 - task: EthanDennis-Microsoft.restore-cache-task.restore-cache-task.restore-cache@0
   displayName: 'Restore a folder from a cache'
   inputs:
-    keyfile: yarn.lock
+    keyfile: '**/yarn.lock'
     targetfolder: 'node_modules'
     cacheurl: '$(CacheUrl)'
     cacheaccesskey: '$(CacheAccessKey)'
