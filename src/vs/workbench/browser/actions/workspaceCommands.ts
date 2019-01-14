@@ -15,7 +15,7 @@ import { FileKind } from 'vs/platform/files/common/files';
 import { ServicesAccessor } from 'vs/platform/instantiation/common/instantiation';
 import { ILabelService } from 'vs/platform/label/common/label';
 import { IQuickInputService, IPickOptions, IQuickPickItem } from 'vs/platform/quickinput/common/quickInput';
-import { getIconClasses } from 'vs/workbench/browser/labels';
+import { getIconClasses } from 'vs/editor/common/services/getIconClasses';
 import { IModelService } from 'vs/editor/common/services/modelService';
 import { IModeService } from 'vs/editor/common/services/modeService';
 import { Schemas } from 'vs/base/common/network';
@@ -65,7 +65,7 @@ CommandsRegistry.registerCommand({
 			canSelectFolders: true,
 			canSelectMany: true,
 			defaultUri: dialogsService.defaultFolderPath(Schemas.file)
-		}).then(folders => {
+		}).then((folders): Promise<any> | null => {
 			if (!folders || !folders.length) {
 				return null;
 			}
@@ -73,7 +73,7 @@ CommandsRegistry.registerCommand({
 			// Add and show Files Explorer viewlet
 			return workspaceEditingService.addFolders(folders.map(folder => ({ uri: folder })))
 				.then(() => viewletService.openViewlet(viewletService.getDefaultViewletId(), true))
-				.then(() => void 0);
+				.then(() => undefined);
 		});
 	}
 });
@@ -87,26 +87,19 @@ CommandsRegistry.registerCommand(PICK_WORKSPACE_FOLDER_COMMAND_ID, function (acc
 
 	const folders = contextService.getWorkspace().folders;
 	if (!folders.length) {
-		return void 0;
+		return undefined;
 	}
 
 	const folderPicks = folders.map(folder => {
 		return {
 			label: folder.name,
-			description: labelService.getUriLabel(resources.dirname(folder.uri), { relative: true }),
+			description: labelService.getUriLabel(resources.dirname(folder.uri)!, { relative: true }),
 			folder,
 			iconClasses: getIconClasses(modelService, modeService, folder.uri, FileKind.ROOT_FOLDER)
 		} as IQuickPickItem;
 	});
 
-	let options: IPickOptions<IQuickPickItem>;
-	if (args) {
-		options = args[0];
-	}
-
-	if (!options) {
-		options = Object.create(null);
-	}
+	const options: IPickOptions<IQuickPickItem> = (args ? args[0] : undefined) || Object.create(null);
 
 	if (!options.activeItem) {
 		options.activeItem = folderPicks[0];
@@ -120,18 +113,11 @@ CommandsRegistry.registerCommand(PICK_WORKSPACE_FOLDER_COMMAND_ID, function (acc
 		options.matchOnDescription = true;
 	}
 
-	let token: CancellationToken;
-	if (args) {
-		token = args[1];
-	}
-
-	if (!token) {
-		token = CancellationToken.None;
-	}
+	const token: CancellationToken = (args ? args[1] : undefined) || CancellationToken.None;
 
 	return quickInputService.pick(folderPicks, options, token).then(pick => {
 		if (!pick) {
-			return void 0;
+			return undefined;
 		}
 
 		return folders[folderPicks.indexOf(pick)];

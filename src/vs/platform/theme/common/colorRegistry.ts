@@ -17,20 +17,20 @@ export type ColorIdentifier = string;
 export interface ColorContribution {
 	readonly id: ColorIdentifier;
 	readonly description: string;
-	readonly defaults: ColorDefaults;
+	readonly defaults: ColorDefaults | null;
 	readonly needsTransparency: boolean;
-	readonly deprecationMessage: string;
+	readonly deprecationMessage: string | undefined;
 }
 
 
 export interface ColorFunction {
-	(theme: ITheme): Color;
+	(theme: ITheme): Color | null;
 }
 
 export interface ColorDefaults {
-	light: ColorValue;
-	dark: ColorValue;
-	hc: ColorValue;
+	light: ColorValue | null;
+	dark: ColorValue | null;
+	hc: ColorValue | null;
 }
 
 /**
@@ -61,7 +61,7 @@ export interface IColorRegistry {
 	/**
 	 * Gets the default color of the given id
 	 */
-	resolveDefaultColor(id: ColorIdentifier, theme: ITheme): Color;
+	resolveDefaultColor(id: ColorIdentifier, theme: ITheme): Color | null;
 
 	/**
 	 * JSON schema for an object to assign color values to one of the color contrbutions.
@@ -86,16 +86,16 @@ class ColorRegistry implements IColorRegistry {
 		this.colorsById = {};
 	}
 
-	public registerColor(id: string, defaults: ColorDefaults, description: string, needsTransparency = false, deprecationMessage?: string): ColorIdentifier {
+	public registerColor(id: string, defaults: ColorDefaults | null, description: string, needsTransparency = false, deprecationMessage?: string): ColorIdentifier {
 		let colorContribution: ColorContribution = { id, description, defaults, needsTransparency, deprecationMessage };
 		this.colorsById[id] = colorContribution;
 		let propertySchema: IJSONSchema = { type: 'string', description, format: 'color-hex', default: '#ff0000' };
 		if (deprecationMessage) {
 			propertySchema.deprecationMessage = deprecationMessage;
 		}
-		this.colorSchema.properties[id] = propertySchema;
-		this.colorReferenceSchema.enum.push(id);
-		this.colorReferenceSchema.enumDescriptions.push(description);
+		this.colorSchema.properties![id] = propertySchema;
+		this.colorReferenceSchema.enum!.push(id);
+		this.colorReferenceSchema.enumDescriptions!.push(description);
 		return id;
 	}
 
@@ -103,7 +103,7 @@ class ColorRegistry implements IColorRegistry {
 		return Object.keys(this.colorsById).map(id => this.colorsById[id]);
 	}
 
-	public resolveDefaultColor(id: ColorIdentifier, theme: ITheme): Color {
+	public resolveDefaultColor(id: ColorIdentifier, theme: ITheme): Color | null {
 		let colorDesc = this.colorsById[id];
 		if (colorDesc && colorDesc.defaults) {
 			let colorValue = colorDesc.defaults[theme.type];
@@ -138,7 +138,7 @@ class ColorRegistry implements IColorRegistry {
 const colorRegistry = new ColorRegistry();
 platform.Registry.add(Extensions.ColorContribution, colorRegistry);
 
-export function registerColor(id: string, defaults: ColorDefaults, description: string, needsTransparency?: boolean, deprecationMessage?: string): ColorIdentifier {
+export function registerColor(id: string, defaults: ColorDefaults | null, description: string, needsTransparency?: boolean, deprecationMessage?: string): ColorIdentifier {
 	return colorRegistry.registerColor(id, defaults, description, needsTransparency, deprecationMessage);
 }
 
@@ -195,7 +195,7 @@ export const selectBorder = registerColor('dropdown.border', { dark: selectBackg
 
 export const listFocusBackground = registerColor('list.focusBackground', { dark: '#062F4A', light: '#D6EBFF', hc: null }, nls.localize('listFocusBackground', "List/Tree background color for the focused item when the list/tree is active. An active list/tree has keyboard focus, an inactive does not."));
 export const listFocusForeground = registerColor('list.focusForeground', { dark: null, light: null, hc: null }, nls.localize('listFocusForeground', "List/Tree foreground color for the focused item when the list/tree is active. An active list/tree has keyboard focus, an inactive does not."));
-export const listActiveSelectionBackground = registerColor('list.activeSelectionBackground', { dark: '#094771', light: '#2477CE', hc: null }, nls.localize('listActiveSelectionBackground', "List/Tree background color for the selected item when the list/tree is active. An active list/tree has keyboard focus, an inactive does not."));
+export const listActiveSelectionBackground = registerColor('list.activeSelectionBackground', { dark: '#094771', light: '#0074E8', hc: null }, nls.localize('listActiveSelectionBackground', "List/Tree background color for the selected item when the list/tree is active. An active list/tree has keyboard focus, an inactive does not."));
 export const listActiveSelectionForeground = registerColor('list.activeSelectionForeground', { dark: Color.white, light: Color.white, hc: null }, nls.localize('listActiveSelectionForeground', "List/Tree foreground color for the selected item when the list/tree is active. An active list/tree has keyboard focus, an inactive does not."));
 export const listInactiveSelectionBackground = registerColor('list.inactiveSelectionBackground', { dark: '#37373D', light: '#E4E6F1', hc: null }, nls.localize('listInactiveSelectionBackground', "List/Tree background color for the selected item when the list/tree is inactive. An active list/tree has keyboard focus, an inactive does not."));
 export const listInactiveSelectionForeground = registerColor('list.inactiveSelectionForeground', { dark: null, light: null, hc: null }, nls.localize('listInactiveSelectionForeground', "List/Tree foreground color for the selected item when the list/tree is inactive. An active list/tree has keyboard focus, an inactive does not."));
@@ -310,10 +310,10 @@ export const snippetFinalTabstopHighlightBorder = registerColor('editor.snippetF
 /**
  * Breadcrumb colors
  */
-export const breadcrumbsForeground = registerColor('breadcrumb.foreground', { light: transparent(foreground, .8), dark: transparent(foreground, .8), hc: transparent(foreground, .8) }, nls.localize('breadcrumbsFocusForeground', "Color of focused breadcrumb items."));
+export const breadcrumbsForeground = registerColor('breadcrumb.foreground', { light: transparent(foreground, 0.8), dark: transparent(foreground, 0.8), hc: transparent(foreground, 0.8) }, nls.localize('breadcrumbsFocusForeground', "Color of focused breadcrumb items."));
 export const breadcrumbsBackground = registerColor('breadcrumb.background', { light: editorBackground, dark: editorBackground, hc: editorBackground }, nls.localize('breadcrumbsBackground', "Background color of breadcrumb items."));
-export const breadcrumbsFocusForeground = registerColor('breadcrumb.focusForeground', { light: darken(foreground, .2), dark: lighten(foreground, .1), hc: lighten(foreground, .1) }, nls.localize('breadcrumbsFocusForeground', "Color of focused breadcrumb items."));
-export const breadcrumbsActiveSelectionForeground = registerColor('breadcrumb.activeSelectionForeground', { light: darken(foreground, .2), dark: lighten(foreground, .1), hc: lighten(foreground, .1) }, nls.localize('breadcrumbsSelectedForegound', "Color of selected breadcrumb items."));
+export const breadcrumbsFocusForeground = registerColor('breadcrumb.focusForeground', { light: darken(foreground, 0.2), dark: lighten(foreground, 0.1), hc: lighten(foreground, 0.1) }, nls.localize('breadcrumbsFocusForeground', "Color of focused breadcrumb items."));
+export const breadcrumbsActiveSelectionForeground = registerColor('breadcrumb.activeSelectionForeground', { light: darken(foreground, 0.2), dark: lighten(foreground, 0.1), hc: lighten(foreground, 0.1) }, nls.localize('breadcrumbsSelectedForegound', "Color of selected breadcrumb items."));
 export const breadcrumbsPickerBackground = registerColor('breadcrumbPicker.background', { light: editorWidgetBackground, dark: editorWidgetBackground, hc: editorWidgetBackground }, nls.localize('breadcrumbsSelectedBackground', "Background color of breadcrumb item picker."));
 
 /**
@@ -412,7 +412,7 @@ function lessProminent(colorValue: ColorValue, backgroundColorValue: ColorValue,
 /**
  * @param colorValue Resolve a color value in the context of a theme
  */
-function resolveColorValue(colorValue: ColorValue, theme: ITheme): Color {
+function resolveColorValue(colorValue: ColorValue | null, theme: ITheme): Color | null {
 	if (colorValue === null) {
 		return null;
 	} else if (typeof colorValue === 'string') {

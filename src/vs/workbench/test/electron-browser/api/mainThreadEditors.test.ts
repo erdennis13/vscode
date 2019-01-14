@@ -19,15 +19,14 @@ import { Range } from 'vs/editor/common/core/range';
 import { Position } from 'vs/editor/common/core/position';
 import { IModelService } from 'vs/editor/common/services/modelService';
 import { EditOperation } from 'vs/editor/common/core/editOperation';
-import { TestFileService, TestEditorService, TestEditorGroupsService, TestEnvironmentService, TestContextService } from 'vs/workbench/test/workbenchTestServices';
-import { TPromise } from 'vs/base/common/winjs.base';
+import { TestFileService, TestEditorService, TestEditorGroupsService, TestEnvironmentService, TestContextService, TestTextResourcePropertiesService, TestWindowService } from 'vs/workbench/test/workbenchTestServices';
 import { ResourceTextEdit } from 'vs/editor/common/modes';
 import { BulkEditService } from 'vs/workbench/services/bulkEdit/electron-browser/bulkEditService';
 import { NullLogService } from 'vs/platform/log/common/log';
 import { ITextModelService, ITextEditorModel } from 'vs/editor/common/services/resolverService';
 import { IReference, ImmortalReference } from 'vs/base/common/lifecycle';
-import { LabelService } from 'vs/platform/label/common/label';
 import { IPanelService } from 'vs/workbench/services/panel/common/panelService';
+import { LabelService } from 'vs/workbench/services/label/common/labelService';
 
 suite('MainThreadEditors', () => {
 
@@ -42,7 +41,7 @@ suite('MainThreadEditors', () => {
 
 	setup(() => {
 		const configService = new TestConfigurationService();
-		modelService = new ModelServiceImpl(null, configService);
+		modelService = new ModelServiceImpl(configService, new TestTextResourcePropertiesService(configService));
 		const codeEditorService = new TestCodeEditorService();
 
 		movedResources.clear();
@@ -55,15 +54,15 @@ suite('MainThreadEditors', () => {
 			isDirty() { return false; }
 			create(uri: URI, contents?: string, options?: any) {
 				createdResources.add(uri);
-				return Promise.resolve(void 0);
+				return Promise.resolve(undefined);
 			}
 			delete(resource: URI) {
 				deletedResources.add(resource);
-				return Promise.resolve(void 0);
+				return Promise.resolve(undefined);
 			}
 			move(source: URI, target: URI) {
 				movedResources.set(source, target);
-				return Promise.resolve(void 0);
+				return Promise.resolve(undefined);
 			}
 			models = <any>{
 				onModelSaved: Event.None,
@@ -74,7 +73,7 @@ suite('MainThreadEditors', () => {
 		const workbenchEditorService = new TestEditorService();
 		const editorGroupService = new TestEditorGroupsService();
 		const textModelService = new class extends mock<ITextModelService>() {
-			createModelReference(resource: URI): TPromise<IReference<ITextEditorModel>> {
+			createModelReference(resource: URI): Promise<IReference<ITextEditorModel>> {
 				const textEditorModel: ITextEditorModel = new class extends mock<ITextEditorModel>() {
 					textEditorModel = modelService.getModel(resource);
 				};
@@ -83,7 +82,7 @@ suite('MainThreadEditors', () => {
 			}
 		};
 
-		const bulkEditService = new BulkEditService(new NullLogService(), modelService, new TestEditorService(), textModelService, new TestFileService(), textFileService, new LabelService(TestEnvironmentService, new TestContextService()), configService);
+		const bulkEditService = new BulkEditService(new NullLogService(), modelService, new TestEditorService(), textModelService, new TestFileService(), textFileService, new LabelService(TestEnvironmentService, new TestContextService(), new TestWindowService()), configService);
 
 		const rpcProtocol = new TestRPCProtocol();
 		rpcProtocol.set(ExtHostContext.ExtHostDocuments, new class extends mock<ExtHostDocumentsShape>() {
@@ -177,7 +176,7 @@ suite('MainThreadEditors', () => {
 			// second edit request fails
 			assert.equal(result, false);
 		});
-		return TPromise.join([p1, p2]);
+		return Promise.all([p1, p2]);
 	});
 
 	test(`applyWorkspaceEdit with only resource edit`, () => {

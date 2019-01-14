@@ -25,10 +25,9 @@ import { attachStylerCallback } from 'vs/platform/theme/common/styler';
 import { IThemeService } from 'vs/platform/theme/common/themeService';
 import { badgeBackground, badgeForeground, contrastBorder } from 'vs/platform/theme/common/colorRegistry';
 import { WorkbenchList } from 'vs/platform/list/browser/listService';
-import { IVirtualDelegate, IRenderer, IListContextMenuEvent } from 'vs/base/browser/ui/list/list';
-import { EditorLabel } from 'vs/workbench/browser/labels';
+import { IListVirtualDelegate, IListRenderer, IListContextMenuEvent } from 'vs/base/browser/ui/list/list';
+import { ResourceLabels, IResourceLabel, IResourceLabelsContainer } from 'vs/workbench/browser/labels';
 import { ActionBar } from 'vs/base/browser/ui/actionbar/actionbar';
-import { TPromise } from 'vs/base/common/winjs.base';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
 import { IEditorService, SIDE_GROUP, ACTIVE_GROUP } from 'vs/workbench/services/editor/common/editorService';
 import { IDisposable, dispose } from 'vs/base/common/lifecycle';
@@ -52,6 +51,7 @@ export class OpenEditorsView extends ViewletPanel {
 	private listRefreshScheduler: RunOnceScheduler;
 	private structuralRefreshDelay: number;
 	private list: WorkbenchList<OpenEditor | IEditorGroup>;
+	private listLabels: ResourceLabels;
 	private contributedContextMenu: IMenu;
 	private needsRefresh: boolean;
 	private resourceContext: ResourceContextKey;
@@ -60,18 +60,18 @@ export class OpenEditorsView extends ViewletPanel {
 
 	constructor(
 		options: IViewletViewOptions,
-		@IInstantiationService private instantiationService: IInstantiationService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IContextMenuService contextMenuService: IContextMenuService,
-		@ITextFileService private textFileService: ITextFileService,
-		@IEditorService private editorService: IEditorService,
-		@IEditorGroupsService private editorGroupService: IEditorGroupsService,
+		@ITextFileService private readonly textFileService: ITextFileService,
+		@IEditorService private readonly editorService: IEditorService,
+		@IEditorGroupsService private readonly editorGroupService: IEditorGroupsService,
 		@IConfigurationService configurationService: IConfigurationService,
 		@IKeybindingService keybindingService: IKeybindingService,
-		@IUntitledEditorService private untitledEditorService: IUntitledEditorService,
-		@IContextKeyService private contextKeyService: IContextKeyService,
-		@IThemeService private themeService: IThemeService,
-		@ITelemetryService private telemetryService: ITelemetryService,
-		@IMenuService private menuService: IMenuService
+		@IUntitledEditorService private readonly untitledEditorService: IUntitledEditorService,
+		@IContextKeyService private readonly contextKeyService: IContextKeyService,
+		@IThemeService private readonly themeService: IThemeService,
+		@ITelemetryService private readonly telemetryService: ITelemetryService,
+		@IMenuService private readonly menuService: IMenuService
 	) {
 		super({
 			...(options as IViewletPanelOptions),
@@ -104,7 +104,7 @@ export class OpenEditorsView extends ViewletPanel {
 
 	private registerUpdateEvents(): void {
 		const updateWholeList = () => {
-			if (!this.isVisible() || !this.list || !this.isExpanded()) {
+			if (!this.isBodyVisible() || !this.list) {
 				this.needsRefresh = true;
 				return;
 			}
@@ -118,7 +118,7 @@ export class OpenEditorsView extends ViewletPanel {
 				if (this.listRefreshScheduler.isScheduled()) {
 					return;
 				}
-				if (!this.isVisible() || !this.list || !this.isExpanded()) {
+				if (!this.isBodyVisible() || !this.list) {
 					this.needsRefresh = true;
 					return;
 				}
@@ -214,14 +214,18 @@ export class OpenEditorsView extends ViewletPanel {
 		if (this.list) {
 			this.list.dispose();
 		}
+		if (this.listLabels) {
+			this.listLabels.clear();
+		}
+		this.listLabels = this.instantiationService.createInstance(ResourceLabels, { onDidChangeVisibility: this.onDidChangeBodyVisibility } as IResourceLabelsContainer);
 		this.list = this.instantiationService.createInstance(WorkbenchList, container, delegate, [
 			new EditorGroupRenderer(this.keybindingService, this.instantiationService, this.editorGroupService),
-			new OpenEditorRenderer(getSelectedElements, this.instantiationService, this.keybindingService, this.configurationService, this.editorGroupService)
+			new OpenEditorRenderer(this.listLabels, getSelectedElements, this.instantiationService, this.keybindingService, this.configurationService, this.editorGroupService)
 		], {
-				identityProvider: (element: OpenEditor | IEditorGroup) => element instanceof OpenEditor ? element.getId() : element.id.toString(),
-				selectOnMouseDown: false /* disabled to better support DND */
+				identityProvider: { getId: (element: OpenEditor | IEditorGroup) => element instanceof OpenEditor ? element.getId() : element.id.toString() }
 			}) as WorkbenchList<OpenEditor | IEditorGroup>;
 		this.disposables.push(this.list);
+		this.disposables.push(this.listLabels);
 
 		this.contributedContextMenu = this.menuService.createMenu(MenuId.OpenEditorsContext, this.list.contextKeyService);
 		this.disposables.push(this.contributedContextMenu);
@@ -257,7 +261,7 @@ export class OpenEditorsView extends ViewletPanel {
 				e.element.group.closeEditor(e.element.editor);
 			}
 		}));
-		this.disposables.push(this.list.onOpen(e => {
+		this.disposables.push(this.list.onDidOpen(e => {
 			const browserEvent = e.browserEvent;
 
 			let openToSide = false;
@@ -273,12 +277,19 @@ export class OpenEditorsView extends ViewletPanel {
 			const element = focused.length ? focused[0] : undefined;
 			if (element instanceof OpenEditor) {
 				this.openEditor(element, { preserveFocus: isSingleClick, pinned: isDoubleClick, sideBySide: openToSide });
-			} else {
+			} else if (element) {
 				this.editorGroupService.activateGroup(element);
 			}
 		}));
 
 		this.listRefreshScheduler.schedule(0);
+
+		this.disposables.push(this.onDidChangeBodyVisibility(visible => {
+			this.updateListVisibility(visible);
+			if (visible && this.needsRefresh) {
+				this.listRefreshScheduler.schedule(0);
+			}
+		}));
 	}
 
 	public getActions(): IAction[] {
@@ -287,23 +298,6 @@ export class OpenEditorsView extends ViewletPanel {
 			this.instantiationService.createInstance(SaveAllAction, SaveAllAction.ID, SaveAllAction.LABEL),
 			this.instantiationService.createInstance(CloseAllEditorsAction, CloseAllEditorsAction.ID, CloseAllEditorsAction.LABEL)
 		];
-	}
-
-	public setExpanded(expanded: boolean): void {
-		super.setExpanded(expanded);
-		this.updateListVisibility(expanded);
-		if (expanded && this.needsRefresh) {
-			this.listRefreshScheduler.schedule(0);
-		}
-	}
-
-	public setVisible(visible: boolean): TPromise<void> {
-		return super.setVisible(visible).then(() => {
-			this.updateListVisibility(visible && this.isExpanded());
-			if (visible && this.needsRefresh) {
-				this.listRefreshScheduler.schedule(0);
-			}
-		});
 	}
 
 	public focus(): void {
@@ -335,8 +329,8 @@ export class OpenEditorsView extends ViewletPanel {
 		return this.editorGroupService.groups.length > 1;
 	}
 
-	private get elements(): (IEditorGroup | OpenEditor)[] {
-		const result: (IEditorGroup | OpenEditor)[] = [];
+	private get elements(): Array<IEditorGroup | OpenEditor> {
+		const result: Array<IEditorGroup | OpenEditor> = [];
 		this.editorGroupService.getGroups(GroupsOrder.GRID_APPEARANCE).forEach(g => {
 			if (this.showGroups) {
 				result.push(g);
@@ -379,7 +373,7 @@ export class OpenEditorsView extends ViewletPanel {
 				this.editorGroupService.activateGroup(element.groupId); // needed for https://github.com/Microsoft/vscode/issues/6672
 			}
 			this.editorService.openEditor(element.editor, options, options.sideBySide ? SIDE_GROUP : ACTIVE_GROUP).then(editor => {
-				if (!preserveActivateGroup) {
+				if (editor && !preserveActivateGroup) {
 					this.editorGroupService.activateGroup(editor.group);
 				}
 			});
@@ -387,13 +381,17 @@ export class OpenEditorsView extends ViewletPanel {
 	}
 
 	private onListContextMenu(e: IListContextMenuEvent<OpenEditor | IEditorGroup>): void {
+		if (!e.element) {
+			return;
+		}
+
 		const element = e.element;
 		this.contextMenuService.showContextMenu({
 			getAnchor: () => e.anchor,
 			getActions: () => {
 				const actions: IAction[] = [];
 				fillInContextMenuActions(this.contributedContextMenu, { shouldForwardArgs: true, arg: element instanceof OpenEditor ? element.editor.getResource() : {} }, actions, this.contextMenuService);
-				return Promise.resolve(actions);
+				return actions;
 			},
 			getActionsContext: () => element instanceof OpenEditor ? { groupId: element.groupId, editorIndex: element.editorIndex } : { groupId: element.id }
 		});
@@ -468,7 +466,7 @@ export class OpenEditorsView extends ViewletPanel {
 
 	public getOptimalWidth(): number {
 		let parentNode = this.list.getHTMLElement();
-		let childNodes = [].slice.call(parentNode.querySelectorAll('.open-editor > a'));
+		let childNodes: HTMLElement[] = [].slice.call(parentNode.querySelectorAll('.open-editor > a'));
 
 		return dom.getLargestChildWidth(parentNode, childNodes);
 	}
@@ -476,7 +474,7 @@ export class OpenEditorsView extends ViewletPanel {
 
 interface IOpenEditorTemplateData {
 	container: HTMLElement;
-	root: EditorLabel;
+	root: IResourceLabel;
 	actionBar: ActionBar;
 	actionRunner: OpenEditorActionRunner;
 	openEditor: OpenEditor;
@@ -494,12 +492,12 @@ interface IEditorGroupTemplateData {
 class OpenEditorActionRunner extends ActionRunner {
 	public editor: OpenEditor;
 
-	run(action: IAction, context?: any): TPromise<void> {
+	run(action: IAction, context?: any): Promise<void> {
 		return super.run(action, { groupId: this.editor.groupId, editorIndex: this.editor.editorIndex });
 	}
 }
 
-class OpenEditorsDelegate implements IVirtualDelegate<OpenEditor | IEditorGroup> {
+class OpenEditorsDelegate implements IListVirtualDelegate<OpenEditor | IEditorGroup> {
 
 	public static readonly ITEM_HEIGHT = 22;
 
@@ -519,7 +517,7 @@ class OpenEditorsDelegate implements IVirtualDelegate<OpenEditor | IEditorGroup>
 /**
  * Check if the item being dragged is one of the supported types that can be dropped on an
  * open editor or editor group. Fixes https://github.com/Microsoft/vscode/issues/52344.
- * @param e
+ *
  * @returns true if dropping is supported.
  */
 function dropOnEditorSupported(e: DragEvent): boolean {
@@ -542,7 +540,7 @@ function dropOnEditorSupported(e: DragEvent): boolean {
 	}
 }
 
-class EditorGroupRenderer implements IRenderer<IEditorGroup, IEditorGroupTemplateData> {
+class EditorGroupRenderer implements IListRenderer<IEditorGroup, IEditorGroupTemplateData> {
 	static readonly ID = 'editorgroup';
 
 	private transfer = LocalSelectionTransfer.getInstance<OpenEditor>();
@@ -567,11 +565,11 @@ class EditorGroupRenderer implements IRenderer<IEditorGroup, IEditorGroupTemplat
 
 		const saveAllInGroupAction = this.instantiationService.createInstance(SaveAllInGroupAction, SaveAllInGroupAction.ID, SaveAllInGroupAction.LABEL);
 		const saveAllInGroupKey = this.keybindingService.lookupKeybinding(saveAllInGroupAction.id);
-		editorGroupTemplate.actionBar.push(saveAllInGroupAction, { icon: true, label: false, keybinding: saveAllInGroupKey ? saveAllInGroupKey.getLabel() : void 0 });
+		editorGroupTemplate.actionBar.push(saveAllInGroupAction, { icon: true, label: false, keybinding: saveAllInGroupKey ? saveAllInGroupKey.getLabel() : undefined });
 
 		const closeGroupAction = this.instantiationService.createInstance(CloseGroupAction, CloseGroupAction.ID, CloseGroupAction.LABEL);
 		const closeGroupActionKey = this.keybindingService.lookupKeybinding(closeGroupAction.id);
-		editorGroupTemplate.actionBar.push(closeGroupAction, { icon: true, label: false, keybinding: closeGroupActionKey ? closeGroupActionKey.getLabel() : void 0 });
+		editorGroupTemplate.actionBar.push(closeGroupAction, { icon: true, label: false, keybinding: closeGroupActionKey ? closeGroupActionKey.getLabel() : undefined });
 
 		editorGroupTemplate.toDispose = [];
 		editorGroupTemplate.toDispose.push(dom.addDisposableListener(container, dom.EventType.DRAG_OVER, (e: DragEvent) => {
@@ -605,23 +603,20 @@ class EditorGroupRenderer implements IRenderer<IEditorGroup, IEditorGroupTemplat
 		templateData.actionBar.context = { groupId: editorGroup.id };
 	}
 
-	disposeElement(): void {
-		// noop
-	}
-
 	disposeTemplate(templateData: IEditorGroupTemplateData): void {
 		templateData.actionBar.dispose();
 		dispose(templateData.toDispose);
 	}
 }
 
-class OpenEditorRenderer implements IRenderer<OpenEditor, IOpenEditorTemplateData> {
+class OpenEditorRenderer implements IListRenderer<OpenEditor, IOpenEditorTemplateData> {
 	static readonly ID = 'openeditor';
 
 	private transfer = LocalSelectionTransfer.getInstance<OpenEditor>();
 
 	constructor(
-		private getSelectedElements: () => (OpenEditor | IEditorGroup)[],
+		private labels: ResourceLabels,
+		private getSelectedElements: () => Array<OpenEditor | IEditorGroup>,
 		private instantiationService: IInstantiationService,
 		private keybindingService: IKeybindingService,
 		private configurationService: IConfigurationService,
@@ -643,9 +638,9 @@ class OpenEditorRenderer implements IRenderer<OpenEditor, IOpenEditorTemplateDat
 
 		const closeEditorAction = this.instantiationService.createInstance(CloseEditorAction, CloseEditorAction.ID, CloseEditorAction.LABEL);
 		const key = this.keybindingService.lookupKeybinding(closeEditorAction.id);
-		editorTemplate.actionBar.push(closeEditorAction, { icon: true, label: false, keybinding: key ? key.getLabel() : void 0 });
+		editorTemplate.actionBar.push(closeEditorAction, { icon: true, label: false, keybinding: key ? key.getLabel() : undefined });
 
-		editorTemplate.root = this.instantiationService.createInstance(EditorLabel, container, void 0);
+		editorTemplate.root = this.labels.create(container);
 
 		editorTemplate.toDispose = [];
 
@@ -703,10 +698,6 @@ class OpenEditorRenderer implements IRenderer<OpenEditor, IOpenEditorTemplateDat
 			extraClasses: ['open-editor'],
 			fileDecorations: this.configurationService.getValue<IFilesConfiguration>().explorer.decorations
 		});
-	}
-
-	disposeElement(): void {
-		// noop
 	}
 
 	disposeTemplate(templateData: IOpenEditorTemplateData): void {

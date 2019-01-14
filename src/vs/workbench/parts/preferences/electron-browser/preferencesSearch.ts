@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TPromise } from 'vs/base/common/winjs.base';
 import { ISettingsEditorModel, ISetting, ISettingsGroup, IFilterMetadata, ISearchResult, IGroupFilter, ISettingMatcher, IScoredResults, ISettingMatch, IRemoteSetting, IExtensionSetting } from 'vs/workbench/services/preferences/common/preferences';
 import { IRange } from 'vs/editor/common/core/range';
 import { distinct, top } from 'vs/base/common/arrays';
@@ -32,14 +31,14 @@ export interface IEndpointDetails {
 export class PreferencesSearchService extends Disposable implements IPreferencesSearchService {
 	_serviceBrand: any;
 
-	private _installedExtensions: TPromise<ILocalExtension[]>;
+	private _installedExtensions: Promise<ILocalExtension[]>;
 
 	constructor(
-		@IWorkspaceConfigurationService private configurationService: IWorkspaceConfigurationService,
-		@IEnvironmentService private environmentService: IEnvironmentService,
-		@IInstantiationService private instantiationService: IInstantiationService,
-		@IExtensionManagementService private extensionManagementService: IExtensionManagementService,
-		@IExtensionEnablementService private extensionEnablementService: IExtensionEnablementService
+		@IWorkspaceConfigurationService private readonly configurationService: IWorkspaceConfigurationService,
+		@IEnvironmentService private readonly environmentService: IEnvironmentService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
+		@IExtensionEnablementService private readonly extensionEnablementService: IExtensionEnablementService
 	) {
 		super();
 
@@ -104,9 +103,9 @@ export class LocalSearchProvider implements ISearchProvider {
 			.trim();
 	}
 
-	searchModel(preferencesModel: ISettingsEditorModel, token?: CancellationToken): TPromise<ISearchResult> {
+	searchModel(preferencesModel: ISettingsEditorModel, token?: CancellationToken): Promise<ISearchResult | null> {
 		if (!this._filter) {
-			return TPromise.wrap(null);
+			return Promise.resolve(null);
 		}
 
 		let orderedScore = LocalSearchProvider.START_SCORE; // Sort is not stable
@@ -126,12 +125,12 @@ export class LocalSearchProvider implements ISearchProvider {
 
 		const filterMatches = preferencesModel.filterSettings(this._filter, this.getGroupFilter(this._filter), settingMatcher);
 		if (filterMatches[0] && filterMatches[0].score === LocalSearchProvider.EXACT_MATCH_SCORE) {
-			return TPromise.wrap({
+			return Promise.resolve({
 				filterMatches: filterMatches.slice(0, 1),
 				exactMatch: true
 			});
 		} else {
-			return TPromise.wrap({
+			return Promise.resolve({
 				filterMatches
 			});
 		}
@@ -164,19 +163,19 @@ class RemoteSearchProvider implements ISearchProvider {
 	private static readonly MAX_REQUESTS = 10;
 	private static readonly NEW_EXTENSIONS_MIN_SCORE = 1;
 
-	private _remoteSearchP: TPromise<IFilterMetadata>;
+	private _remoteSearchP: Promise<IFilterMetadata>;
 
-	constructor(private options: IRemoteSearchProviderOptions, private installedExtensions: TPromise<ILocalExtension[]>,
-		@IEnvironmentService private environmentService: IEnvironmentService,
-		@IRequestService private requestService: IRequestService,
-		@ILogService private logService: ILogService
+	constructor(private options: IRemoteSearchProviderOptions, private installedExtensions: Promise<ILocalExtension[]>,
+		@IEnvironmentService private readonly environmentService: IEnvironmentService,
+		@IRequestService private readonly requestService: IRequestService,
+		@ILogService private readonly logService: ILogService
 	) {
 		this._remoteSearchP = this.options.filter ?
-			TPromise.wrap(this.getSettingsForFilter(this.options.filter)) :
-			TPromise.wrap(null);
+			Promise.resolve(this.getSettingsForFilter(this.options.filter)) :
+			Promise.resolve(null);
 	}
 
-	searchModel(preferencesModel: ISettingsEditorModel, token?: CancellationToken): TPromise<ISearchResult> {
+	searchModel(preferencesModel: ISettingsEditorModel, token?: CancellationToken): Promise<ISearchResult> {
 		return this._remoteSearchP.then(remoteResult => {
 			if (!remoteResult) {
 				return null;
@@ -239,12 +238,12 @@ class RemoteSearchProvider implements ISearchProvider {
 			}
 		}
 
-		return TPromise.join(allRequestDetails.map(details => this.getSettingsFromBing(details))).then(allResponses => {
+		return Promise.all(allRequestDetails.map(details => this.getSettingsFromBing(details))).then(allResponses => {
 			// Merge all IFilterMetadata
 			const metadata = allResponses[0];
 			metadata.requestCount = 1;
 
-			for (let response of allResponses.slice(1)) {
+			for (const response of allResponses.slice(1)) {
 				metadata.requestCount++;
 				metadata.scoredResults = { ...metadata.scoredResults, ...response.scoredResults };
 			}
@@ -253,7 +252,7 @@ class RemoteSearchProvider implements ISearchProvider {
 		});
 	}
 
-	private getSettingsFromBing(details: IBingRequestDetails): TPromise<IFilterMetadata> {
+	private getSettingsFromBing(details: IBingRequestDetails): Promise<IFilterMetadata> {
 		this.logService.debug(`Searching settings via ${details.url}`);
 		if (details.body) {
 			this.logService.debug(`Body: ${details.body}`);
@@ -441,7 +440,7 @@ class SettingMatches {
 	private readonly keyMatchingWords: Map<string, IRange[]> = new Map<string, IRange[]>();
 	private readonly valueMatchingWords: Map<string, IRange[]> = new Map<string, IRange[]>();
 
-	public readonly matches: IRange[];
+	readonly matches: IRange[];
 
 	constructor(searchString: string, setting: ISetting, private requireFullQueryMatch: boolean, private searchDescription, private valuesMatcher: (filter: string, setting: ISetting) => IRange[]) {
 		this.matches = distinct(this._findMatchesInSetting(searchString, setting), (match) => `${match.startLineNumber}_${match.startColumn}_${match.endLineNumber}_${match.endColumn}_`);
@@ -452,7 +451,7 @@ class SettingMatches {
 		if (setting.overrides && setting.overrides.length) {
 			for (const subSetting of setting.overrides) {
 				const subSettingMatches = new SettingMatches(searchString, subSetting, this.requireFullQueryMatch, this.searchDescription, this.valuesMatcher);
-				let words = searchString.split(' ');
+				const words = searchString.split(' ');
 				const descriptionRanges: IRange[] = this.getRangesForWords(words, this.descriptionMatchingWords, [subSettingMatches.descriptionMatchingWords, subSettingMatches.keyMatchingWords, subSettingMatches.valueMatchingWords]);
 				const keyRanges: IRange[] = this.getRangesForWords(words, this.keyMatchingWords, [subSettingMatches.descriptionMatchingWords, subSettingMatches.keyMatchingWords, subSettingMatches.valueMatchingWords]);
 				const subSettingKeyRanges: IRange[] = this.getRangesForWords(words, subSettingMatches.keyMatchingWords, [this.descriptionMatchingWords, this.keyMatchingWords, subSettingMatches.valueMatchingWords]);
@@ -468,7 +467,7 @@ class SettingMatches {
 		const registry: { [qualifiedKey: string]: IJSONSchema } = Registry.as<IConfigurationRegistry>(Extensions.Configuration).getConfigurationProperties();
 		const schema: IJSONSchema = registry[setting.key];
 
-		let words = searchString.split(' ');
+		const words = searchString.split(' ');
 		const settingKeyAsWords: string = setting.key.split('.').join(' ');
 
 		for (const word of words) {

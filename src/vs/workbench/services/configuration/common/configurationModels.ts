@@ -123,7 +123,7 @@ export class FolderSettingsModelParser extends ConfigurationModelParser {
 
 	private getScope(key: string, configurationProperties: { [qualifiedKey: string]: IConfigurationPropertySchema }): ConfigurationScope {
 		const propertySchema = configurationProperties[key];
-		return propertySchema ? propertySchema.scope : ConfigurationScope.WINDOW;
+		return propertySchema && typeof propertySchema.scope !== 'undefined' ? propertySchema.scope : ConfigurationScope.WINDOW;
 	}
 }
 
@@ -147,8 +147,8 @@ export class Configuration extends BaseConfiguration {
 	inspect<C>(key: string, overrides: IConfigurationOverrides = {}): {
 		default: C,
 		user: C,
-		workspace: C,
-		workspaceFolder: C
+		workspace?: C,
+		workspaceFolder?: C
 		memory?: C
 		value: C,
 	} {
@@ -202,13 +202,17 @@ export class Configuration extends BaseConfiguration {
 			// Do not remove workspace configuration
 			return new ConfigurationChangeEvent();
 		}
-		const keys = this.folders.get(folder).keys;
+		const folderConfig = this.folders.get(folder);
+		if (!folderConfig) {
+			throw new Error('Unknown folder');
+		}
+		const keys = folderConfig.keys;
 		super.deleteFolderConfiguration(folder);
 		return new ConfigurationChangeEvent().change(keys, folder);
 	}
 
 	compare(other: Configuration): string[] {
-		const result = [];
+		const result: string[] = [];
 		for (const key of this.allKeys()) {
 			if (!equals(this.getValue(key), other.getValue(key))
 				|| (this._workspace && this._workspace.folders.some(folder => !equals(this.getValue(key, { resource: folder.uri }), other.getValue(key, { resource: folder.uri }))))) {
@@ -225,7 +229,7 @@ export class Configuration extends BaseConfiguration {
 
 export class AllKeysConfigurationChangeEvent extends AbstractConfigurationChangeEvent implements IConfigurationChangeEvent {
 
-	private _changedConfiguration: ConfigurationModel = null;
+	private _changedConfiguration: ConfigurationModel | null = null;
 
 	constructor(private _configuration: Configuration, readonly source: ConfigurationTarget, readonly sourceConfig: any) { super(); }
 

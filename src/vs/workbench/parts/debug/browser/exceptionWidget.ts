@@ -28,7 +28,7 @@ export class ExceptionWidget extends ZoneWidget {
 
 	constructor(editor: ICodeEditor, private exceptionInfo: IExceptionInfo,
 		@IThemeService themeService: IThemeService,
-		@IInstantiationService private instantiationService: IInstantiationService
+		@IInstantiationService private readonly instantiationService: IInstantiationService
 	) {
 		super(editor, { showFrame: true, showArrow: true, frameWidth: 1, className: 'exception-widget-container' });
 
@@ -46,7 +46,7 @@ export class ExceptionWidget extends ZoneWidget {
 
 	private _applyTheme(theme: ITheme): void {
 		this._backgroundColor = theme.getColor(debugExceptionWidgetBackground);
-		let frameColor = theme.getColor(debugExceptionWidgetBorder);
+		const frameColor = theme.getColor(debugExceptionWidgetBorder);
 		this.style({
 			arrowColor: frameColor,
 			frameColor: frameColor

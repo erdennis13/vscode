@@ -10,13 +10,14 @@ import * as nls from 'vscode-nls';
 import * as Proto from '../protocol';
 import { ITypeScriptServiceClient } from '../typescriptService';
 import API from '../utils/api';
+import { nulToken } from '../utils/cancellation';
+import { VersionDependentRegistration } from '../utils/dependentRegistration';
+import { Disposable } from '../utils/dispose';
 import * as fileSchemes from '../utils/fileSchemes';
 import { isTypeScriptDocument } from '../utils/languageModeIds';
 import { escapeRegExp } from '../utils/regexp';
 import * as typeConverters from '../utils/typeConverters';
 import FileConfigurationManager from './fileConfigurationManager';
-import { VersionDependentRegistration } from '../utils/dependentRegistration';
-import { nulToken } from '../utils/cancellation';
 
 const localize = nls.loadMessageBundle();
 
@@ -28,21 +29,22 @@ enum UpdateImportsOnFileMoveSetting {
 	Never = 'never',
 }
 
-class UpdateImportsOnFileRenameHandler {
-	private readonly _onDidRenameSub: vscode.Disposable;
-
+class UpdateImportsOnFileRenameHandler extends Disposable {
 	public constructor(
 		private readonly client: ITypeScriptServiceClient,
 		private readonly fileConfigurationManager: FileConfigurationManager,
 		private readonly _handles: (uri: vscode.Uri) => Promise<boolean>,
 	) {
-		this._onDidRenameSub = vscode.workspace.onDidRenameFile(e => {
-			this.doRename(e.oldUri, e.newUri);
-		});
-	}
+		super();
 
-	public dispose() {
-		this._onDidRenameSub.dispose();
+		this._register(vscode.workspace.onDidRenameFile(e => {
+			vscode.window.withProgress({
+				location: vscode.ProgressLocation.Window,
+				title: localize('renameProgress.title', "Checking for update of JS/TS imports")
+			}, () => {
+				return this.doRename(e.oldUri, e.newUri);
+			});
+		}));
 	}
 
 	private async doRename(
@@ -78,7 +80,7 @@ class UpdateImportsOnFileRenameHandler {
 		}
 
 		// Make sure TS knows about file
-		this.client.bufferSyncSupport.closeResource(targetResource);
+		this.client.bufferSyncSupport.closeResource(oldResource);
 		this.client.bufferSyncSupport.openTextDocument(document);
 
 		if (this.client.apiVersion.lt(API.v300) && !fs.lstatSync(newResource.fsPath).isDirectory()) {
@@ -149,24 +151,20 @@ class UpdateImportsOnFileRenameHandler {
 		}
 
 		const response = await vscode.window.showInformationMessage<Item>(
-			localize('prompt', "Automatically update imports for moved file: '{0}'?", path.basename(newResource.fsPath)), {
+			localize('prompt', "Update imports for moved file: '{0}'?", path.basename(newResource.fsPath)), {
 				modal: true,
-			},
-			{
+			}, {
 				title: localize('reject.title', "No"),
 				choice: Choice.Reject,
 				isCloseAffordance: true,
-			},
-			{
+			}, {
 				title: localize('accept.title', "Yes"),
 				choice: Choice.Accept,
-			},
-			{
-				title: localize('always.title', "Yes, always update imports"),
+			}, {
+				title: localize('always.title', "Always automatically update imports"),
 				choice: Choice.Always,
-			},
-			{
-				title: localize('never.title', "No, never update imports"),
+			}, {
+				title: localize('never.title', "Never automatically update imports"),
 				choice: Choice.Never,
 			});
 
@@ -232,21 +230,19 @@ class UpdateImportsOnFileRenameHandler {
 		document: vscode.TextDocument,
 		oldFile: string,
 		newFile: string,
-	) {
+	): Promise<vscode.WorkspaceEdit | undefined> {
 		const isDirectoryRename = fs.lstatSync(newFile).isDirectory();
-		await this.fileConfigurationManager.setGlobalConfigurationFromDocument(document, nulToken);
 
-		const args: Proto.GetEditsForFileRenameRequestArgs & { file: string } = {
-			file: targetResource,
-			oldFilePath: oldFile,
-			newFilePath: newFile,
-		};
-		const response = await this.client.execute('getEditsForFileRename', args, nulToken);
-		if (response.type !== 'response') {
-			return;
-		}
-
-		if (!response.body) {
+		const response = await this.client.interuptGetErr(() => {
+			this.fileConfigurationManager.setGlobalConfigurationFromDocument(document, nulToken);
+			const args: Proto.GetEditsForFileRenameRequestArgs & { file: string } = {
+				file: targetResource,
+				oldFilePath: oldFile,
+				newFilePath: newFile,
+			};
+			return this.client.execute('getEditsForFileRename', args, nulToken);
+		});
+		if (response.type !== 'response' || !response.body) {
 			return;
 		}
 
@@ -254,10 +250,10 @@ class UpdateImportsOnFileRenameHandler {
 		for (const edit of response.body) {
 			// Workaround for https://github.com/Microsoft/vscode/issues/52675
 			if (this.client.apiVersion.lt(API.v300)) {
-				if ((edit as Proto.FileCodeEdits).fileName.match(/[\/\\]node_modules[\/\\]/gi)) {
+				if (edit.fileName.match(/[\/\\]node_modules[\/\\]/gi)) {
 					continue;
 				}
-				for (const change of (edit as Proto.FileCodeEdits).textChanges) {
+				for (const change of edit.textChanges) {
 					if (change.newText.match(/\/node_modules\//gi)) {
 						continue;
 					}
@@ -300,14 +296,14 @@ class UpdateImportsOnFileRenameHandler {
 				start: change.start,
 				end: {
 					line: change.end.line,
-					offset: change.end.offset - match[1].length
-				}
+					offset: change.end.offset - match[1].length,
+				},
 			};
 		});
 
 		return {
 			fileName: edit.fileName,
-			textChanges
+			textChanges,
 		};
 	}
 }

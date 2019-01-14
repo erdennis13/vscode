@@ -7,7 +7,7 @@ import * as nls from 'vs/nls';
 import * as types from 'vs/base/common/types';
 import { IExtensionService } from 'vs/workbench/services/extensions/common/extensions';
 import { IWorkbenchThemeService, IColorTheme, ITokenColorCustomizations, IFileIconTheme, ExtensionData, VS_LIGHT_THEME, VS_DARK_THEME, VS_HC_THEME, COLOR_THEME_SETTING, ICON_THEME_SETTING, CUSTOM_WORKBENCH_COLORS_SETTING, CUSTOM_EDITOR_COLORS_SETTING, CUSTOM_EDITOR_SCOPE_COLORS_SETTING, DETECT_HC_SETTING, HC_THEME_ID } from 'vs/workbench/services/themes/common/workbenchThemeService';
-import { IStorageService } from 'vs/platform/storage/common/storage';
+import { IStorageService, StorageScope } from 'vs/platform/storage/common/storage';
 import { ITelemetryService } from 'vs/platform/telemetry/common/telemetry';
 import { Registry } from 'vs/platform/registry/common/platform';
 import * as errors from 'vs/base/common/errors';
@@ -91,12 +91,12 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 	constructor(
 		container: HTMLElement,
 		@IExtensionService extensionService: IExtensionService,
-		@IStorageService private storageService: IStorageService,
-		@IConfigurationService private configurationService: IConfigurationService,
-		@ITelemetryService private telemetryService: ITelemetryService,
-		@IWindowService private windowService: IWindowService,
-		@IInstantiationService private instantiationService: IInstantiationService,
-		@IEnvironmentService private environmentService: IEnvironmentService
+		@IStorageService private readonly storageService: IStorageService,
+		@IConfigurationService private readonly configurationService: IConfigurationService,
+		@ITelemetryService private readonly telemetryService: ITelemetryService,
+		@IWindowService private readonly windowService: IWindowService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
+		@IEnvironmentService private readonly environmentService: IEnvironmentService
 	) {
 
 		this.container = container;
@@ -119,8 +119,8 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		// In order to avoid paint flashing for tokens, because
 		// themes are loaded asynchronously, we need to initialize
 		// a color theme document with good defaults until the theme is loaded
-		let themeData: ColorThemeData = null;
-		let persistedThemeData = this.storageService.get(PERSISTED_THEME_STORAGE_KEY);
+		let themeData: ColorThemeData | null = null;
+		let persistedThemeData = this.storageService.get(PERSISTED_THEME_STORAGE_KEY, StorageScope.GLOBAL);
 		if (persistedThemeData) {
 			themeData = ColorThemeData.fromStorageData(persistedThemeData);
 		}
@@ -133,8 +133,8 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		this.updateDynamicCSSRules(themeData);
 		this.applyTheme(themeData, null, true);
 
-		let iconData: FileIconThemeData = null;
-		let persistedIconThemeData = this.storageService.get(PERSISTED_ICON_THEME_STORAGE_KEY);
+		let iconData: FileIconThemeData | null = null;
+		let persistedIconThemeData = this.storageService.get(PERSISTED_ICON_THEME_STORAGE_KEY, StorageScope.GLOBAL);
 		if (persistedIconThemeData) {
 			iconData = FileIconThemeData.fromStorageData(persistedIconThemeData);
 			if (iconData) {
@@ -145,7 +145,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 			}
 		}
 
-		this.initialize().then(null, errors.onUnexpectedError).then(_ => {
+		this.initialize().then(undefined, errors.onUnexpectedError).then(_ => {
 			this.installConfigurationListener();
 		});
 
@@ -191,11 +191,15 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		return this.onFileIconThemeChange.event;
 	}
 
+	public get onIconThemeChange(): Event<IFileIconTheme> {
+		return this.onFileIconThemeChange.event;
+	}
+
 	public get onThemeChange(): Event<ITheme> {
 		return this.onColorThemeChange.event;
 	}
 
-	private initialize(): Thenable<[IColorTheme, IFileIconTheme]> {
+	private initialize(): Promise<[IColorTheme, IFileIconTheme]> {
 		let detectHCThemeSetting = this.configurationService.getValue<boolean>(DETECT_HC_SETTING);
 
 		let colorThemeSetting: string;
@@ -259,7 +263,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		return this.currentColorTheme;
 	}
 
-	public getColorThemes(): Thenable<IColorTheme[]> {
+	public getColorThemes(): Promise<IColorTheme[]> {
 		return this.colorThemeStore.getColorThemes();
 	}
 
@@ -267,7 +271,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		return this.getColorTheme();
 	}
 
-	public setColorTheme(themeId: string, settingsTarget: ConfigurationTarget): Thenable<IColorTheme> {
+	public setColorTheme(themeId: string, settingsTarget: ConfigurationTarget | null): Promise<IColorTheme | null> {
 		if (!themeId) {
 			return Promise.resolve(null);
 		}
@@ -325,7 +329,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		_applyRules(cssRules.join('\n'), colorThemeRulesClassName);
 	}
 
-	private applyTheme(newTheme: ColorThemeData, settingsTarget: ConfigurationTarget, silent = false): Thenable<IColorTheme> {
+	private applyTheme(newTheme: ColorThemeData, settingsTarget: ConfigurationTarget, silent = false): Promise<IColorTheme | null> {
 		if (this.container) {
 			if (this.currentColorTheme) {
 				removeClasses(this.container, this.currentColorTheme.id);
@@ -348,12 +352,12 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		this.onColorThemeChange.fire(this.currentColorTheme);
 
 		// remember theme data for a quick restore
-		this.storageService.store(PERSISTED_THEME_STORAGE_KEY, newTheme.toStorageData());
+		this.storageService.store(PERSISTED_THEME_STORAGE_KEY, newTheme.toStorageData(), StorageScope.GLOBAL);
 
 		return this.writeColorThemeConfiguration(settingsTarget);
 	}
 
-	private writeColorThemeConfiguration(settingsTarget: ConfigurationTarget): Thenable<IColorTheme> {
+	private writeColorThemeConfiguration(settingsTarget: ConfigurationTarget): Promise<IColorTheme> {
 		if (!types.isUndefinedOrNull(settingsTarget)) {
 			return this.configurationWriter.writeConfiguration(COLOR_THEME_SETTING, this.currentColorTheme.settingsId, settingsTarget).then(_ => this.currentColorTheme);
 		}
@@ -386,7 +390,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		}
 	}
 
-	public getFileIconThemes(): Thenable<IFileIconTheme[]> {
+	public getFileIconThemes(): Promise<IFileIconTheme[]> {
 		return this.iconThemeStore.getFileIconThemes();
 	}
 
@@ -394,7 +398,11 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 		return this.currentIconTheme;
 	}
 
-	public setFileIconTheme(iconTheme: string, settingsTarget: ConfigurationTarget): Thenable<IFileIconTheme> {
+	public getIconTheme() {
+		return this.currentIconTheme;
+	}
+
+	public setFileIconTheme(iconTheme: string, settingsTarget: ConfigurationTarget): Promise<IFileIconTheme> {
 		iconTheme = iconTheme || '';
 		if (iconTheme === this.currentIconTheme.id && this.currentIconTheme.isLoaded) {
 			return this.writeFileIconConfiguration(settingsTarget);
@@ -403,7 +411,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 			this.doSetFileIconTheme(newIconTheme);
 
 			// remember theme data for a quick restore
-			this.storageService.store(PERSISTED_ICON_THEME_STORAGE_KEY, newIconTheme.toStorageData());
+			this.storageService.store(PERSISTED_ICON_THEME_STORAGE_KEY, newIconTheme.toStorageData(), StorageScope.GLOBAL);
 
 			return this.writeFileIconConfiguration(settingsTarget);
 		};
@@ -435,7 +443,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 
 	}
 
-	private writeFileIconConfiguration(settingsTarget: ConfigurationTarget): Thenable<IFileIconTheme> {
+	private writeFileIconConfiguration(settingsTarget: ConfigurationTarget): Promise<IFileIconTheme> {
 		if (!types.isUndefinedOrNull(settingsTarget)) {
 			return this.configurationWriter.writeConfiguration(ICON_THEME_SETTING, this.currentIconTheme.settingsId, settingsTarget).then(_ => this.currentIconTheme);
 		}
@@ -463,7 +471,7 @@ export class WorkbenchThemeService implements IWorkbenchThemeService {
 	}
 }
 
-function _applyIconTheme(data: FileIconThemeData, onApply: (theme: FileIconThemeData) => Thenable<IFileIconTheme>): Thenable<IFileIconTheme> {
+function _applyIconTheme(data: FileIconThemeData, onApply: (theme: FileIconThemeData) => Promise<IFileIconTheme>): Promise<IFileIconTheme> {
 	_applyRules(data.styleSheetContent, iconThemeRulesClassName);
 	return onApply(data);
 }
@@ -485,23 +493,23 @@ colorThemeSchema.register();
 fileIconThemeSchema.register();
 
 class ConfigurationWriter {
-	constructor(@IConfigurationService private configurationService: IConfigurationService) {
+	constructor(@IConfigurationService private readonly configurationService: IConfigurationService) {
 	}
 
-	public writeConfiguration(key: string, value: any, settingsTarget: ConfigurationTarget): Thenable<void> {
+	public writeConfiguration(key: string, value: any, settingsTarget: ConfigurationTarget): Promise<void> {
 		let settings = this.configurationService.inspect(key);
 		if (settingsTarget === ConfigurationTarget.USER) {
 			if (value === settings.user) {
-				return Promise.resolve(null); // nothing to do
+				return Promise.resolve(undefined); // nothing to do
 			} else if (value === settings.default) {
 				if (types.isUndefined(settings.user)) {
-					return Promise.resolve(null); // nothing to do
+					return Promise.resolve(undefined); // nothing to do
 				}
-				value = void 0; // remove configuration from user settings
+				value = undefined; // remove configuration from user settings
 			}
 		} else if (settingsTarget === ConfigurationTarget.WORKSPACE) {
 			if (value === settings.value) {
-				return Promise.resolve(null); // nothing to do
+				return Promise.resolve(undefined); // nothing to do
 			}
 		}
 		return this.configurationService.updateValue(key, value, settingsTarget);

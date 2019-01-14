@@ -21,7 +21,6 @@ import { dispose, IDisposable, toDisposable } from 'vs/base/common/lifecycle';
 import { LRUCache } from 'vs/base/common/map';
 import { escape } from 'vs/base/common/strings';
 import { URI } from 'vs/base/common/uri';
-import { TPromise } from 'vs/base/common/winjs.base';
 import { ITree } from 'vs/base/parts/tree/browser/tree';
 import 'vs/css!./outlinePanel';
 import { ICodeEditor, isCodeEditor, isDiffEditor } from 'vs/editor/browser/editorBrowser';
@@ -31,7 +30,7 @@ import { Selection } from 'vs/editor/common/core/selection';
 import { ITextModel } from 'vs/editor/common/model';
 import { IModelContentChangedEvent } from 'vs/editor/common/model/textModelEvents';
 import { DocumentSymbolProviderRegistry } from 'vs/editor/common/modes';
-import LanguageFeatureRegistry from 'vs/editor/common/modes/languageFeatureRegistry';
+import { LanguageFeatureRegistry } from 'vs/editor/common/modes/languageFeatureRegistry';
 import { OutlineElement, OutlineModel, TreeElement } from 'vs/editor/contrib/documentSymbols/outlineModel';
 import { localize } from 'vs/nls';
 import { IConfigurationService } from 'vs/platform/configuration/common/configuration';
@@ -51,7 +50,7 @@ import { IViewletViewOptions } from 'vs/workbench/browser/parts/views/viewsViewl
 import { CollapseAction } from 'vs/workbench/browser/viewlet';
 import { IViewsService } from 'vs/workbench/common/views';
 import { ACTIVE_GROUP, IEditorService, SIDE_GROUP } from 'vs/workbench/services/editor/common/editorService';
-import { OutlineController, OutlineDataSource, OutlineItemComparator, OutlineItemCompareType, OutlineItemFilter, OutlineRenderer, OutlineTreeState } from '../../../../editor/contrib/documentSymbols/outlineTree';
+import { OutlineController, OutlineDataSource, OutlineItemComparator, OutlineItemCompareType, OutlineItemFilter, OutlineRenderer, OutlineTreeState } from 'vs/editor/contrib/documentSymbols/outlineTree';
 import { OutlineConfigKeys, OutlineViewFiltered, OutlineViewFocused, OutlineViewId } from './outline';
 
 class RequestState {
@@ -98,7 +97,7 @@ class RequestOracle {
 	private _update(): void {
 
 		let widget = this._editorService.activeTextEditorWidget;
-		let codeEditor: ICodeEditor = undefined;
+		let codeEditor: ICodeEditor | undefined = undefined;
 		if (isCodeEditor(widget)) {
 			codeEditor = widget;
 		} else if (isDiffEditor(widget)) {
@@ -231,7 +230,6 @@ export class OutlinePanel extends ViewletPanel {
 	private _outlineViewState = new OutlineViewState();
 	private _requestOracle: RequestOracle;
 	private _cachedHeight: number;
-	private _pendingLayout: IDisposable;
 	private _domNode: HTMLElement;
 	private _message: HTMLDivElement;
 	private _inputContainer: HTMLDivElement;
@@ -374,31 +372,24 @@ export class OutlinePanel extends ViewletPanel {
 				dom.toggleClass(this._domNode, 'no-icons', !this._configurationService.getValue(OutlineConfigKeys.icons));
 			}
 		}));
+
+		this.disposables.push(this.onDidChangeBodyVisibility(visible => {
+			if (visible && !this._requestOracle) {
+				this._requestOracle = this._instantiationService.createInstance(RequestOracle, (editor, event) => this._doUpdate(editor, event), DocumentSymbolProviderRegistry);
+			} else if (!visible) {
+				dispose(this._requestOracle);
+				this._requestOracle = undefined;
+				this._doUpdate(undefined, undefined);
+			}
+		}));
 	}
 
 	protected layoutBody(height: number): void {
 		if (height !== this._cachedHeight) {
 			this._cachedHeight = height;
-			if (this._pendingLayout) {
-				this._pendingLayout.dispose();
-			}
-			this._pendingLayout = dom.measure(() => {
-				// this._input.layout();
-				const inputHeight = dom.getTotalHeight(this._inputContainer);
-				this._tree.layout(height - (inputHeight + 5 /*progressbar height, defined in outlinePanel.css*/));
-			});
+			const treeHeight = height - (5 /*progressbar height*/ + 33 /*input height*/);
+			this._tree.layout(treeHeight);
 		}
-	}
-
-	setVisible(visible: boolean): TPromise<void> {
-		if (visible) {
-			this._requestOracle = this._requestOracle || this._instantiationService.createInstance(RequestOracle, (editor, event) => this._doUpdate(editor, event).then(undefined, onUnexpectedError), DocumentSymbolProviderRegistry);
-		} else {
-			dispose(this._requestOracle);
-			this._requestOracle = undefined;
-			this._doUpdate(undefined, undefined);
-		}
-		return super.setVisible(visible);
 	}
 
 	getActions(): IAction[] {
@@ -699,11 +690,17 @@ export class OutlinePanel extends ViewletPanel {
 			lineNumber: selection.selectionStartLineNumber,
 			column: selection.selectionStartColumn
 		}, first instanceof OutlineElement ? first : undefined);
-		if (item) {
-			await this._tree.reveal(item, .5);
-			this._tree.setFocus(item, this);
-			this._tree.setSelection([item], this);
+		if (!item) {
+			// nothing to reveal
+			return;
 		}
+		let top = this._tree.getRelativeTop(item);
+		if (top < 0 || top > 1) {
+			// only when outside view port
+			await this._tree.reveal(item, 0.5);
+		}
+		this._tree.setFocus(item, this);
+		this._tree.setSelection([item], this);
 	}
 
 	focusHighlightedElement(up: boolean): void {
@@ -717,7 +714,7 @@ export class OutlinePanel extends ViewletPanel {
 		let navi = this._tree.getNavigator(this._tree.getFocus(), false);
 		let candidate: any;
 		while (candidate = up ? navi.previous() : navi.next()) {
-			if (candidate instanceof OutlineElement && candidate.score && candidate.score[1].length > 0) {
+			if (candidate instanceof OutlineElement && candidate.score && candidate.score[1] > 0) {
 				this._tree.setFocus(candidate, this);
 				this._tree.reveal(candidate).then(undefined, onUnexpectedError);
 				break;

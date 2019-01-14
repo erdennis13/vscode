@@ -20,6 +20,7 @@ const options: minimist.Opts = {
 		'extensions-dir',
 		'folder-uri',
 		'file-uri',
+		'remote',
 		'extensionDevelopmentPath',
 		'extensionTestsPath',
 		'install-extension',
@@ -50,8 +51,8 @@ const options: minimist.Opts = {
 		'unity-launch',
 		'reuse-window',
 		'open-url',
-		'performance',
 		'prof-startup',
+		'prof-code-loading',
 		'verbose',
 		'logExtensionHostCommunication',
 		'disable-extensions',
@@ -105,7 +106,7 @@ function validate(args: ParsedArgs): ParsedArgs {
 	return args;
 }
 
-function stripAppPath(argv: string[]): string[] {
+function stripAppPath(argv: string[]): string[] | undefined {
 	const index = firstIndex(argv, a => !/^-/.test(a));
 
 	if (index > -1) {
@@ -122,7 +123,7 @@ export function parseMainProcessArgv(processArgv: string[]): ParsedArgs {
 
 	// If dev, remove the first non-option argument: it's the app location
 	if (process.env['VSCODE_DEV']) {
-		args = stripAppPath(args);
+		args = stripAppPath(args) || [];
 	}
 
 	return validate(parseArgs(args));
@@ -135,7 +136,7 @@ export function parseCLIProcessArgv(processArgv: string[]): ParsedArgs {
 	let [, , ...args] = processArgv;
 
 	if (process.env['VSCODE_DEV']) {
-		args = stripAppPath(args);
+		args = stripAppPath(args) || [];
 	}
 
 	return validate(parseArgs(args));
@@ -174,8 +175,8 @@ const troubleshootingHelp: { [name: string]: string; } = {
 	'--verbose': localize('verbose', "Print verbose output (implies --wait)."),
 	'--log <level>': localize('log', "Log level to use. Default is 'info'. Allowed values are 'critical', 'error', 'warn', 'info', 'debug', 'trace', 'off'."),
 	'-s, --status': localize('status', "Print process usage and diagnostics information."),
-	'-p, --performance': localize('performance', "Start with the 'Developer: Startup Performance' command enabled."),
-	'--prof-startup': localize('prof-startup', "Run CPU profiler during startup"),
+	'--prof-startup': localize('prof-startup', "Run CPU profilers during startup."),
+	'--prof-modules': localize('prof-modules', "Capture performance markers while loading JS modules and print them with 'F1 > Developer: Startup Performance'"),
 	'--disable-extensions': localize('disableExtensions', "Disable all installed extensions."),
 	'--disable-extension <extension-id>': localize('disableExtension', "Disable an extension."),
 	'--inspect-extensions': localize('inspect-extensions', "Allow debugging and profiling of extensions. Check the developer tools for the connection URI."),
@@ -190,7 +191,7 @@ export function formatOptions(options: { [name: string]: string; }, columns: num
 	let argLength = Math.max.apply(null, keys.map(k => k.length)) + 2/*left padding*/ + 1/*right padding*/;
 	if (columns - argLength < 25) {
 		// Use a condensed version on narrow terminals
-		return keys.reduce((r, key) => r.concat([`  ${key}`, `      ${options[key]}`]), []).join('\n');
+		return keys.reduce((r, key) => r.concat([`  ${key}`, `      ${options[key]}`]), [] as string[]).join('\n');
 	}
 	let descriptionColumns = columns - argLength - 1;
 	let result = '';

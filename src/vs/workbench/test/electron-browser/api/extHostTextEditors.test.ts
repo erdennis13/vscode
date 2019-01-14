@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as assert from 'assert';
-import { TPromise } from 'vs/base/common/winjs.base';
 import * as extHostTypes from 'vs/workbench/api/node/extHostTypes';
 import { MainContext, MainThreadTextEditorsShape, WorkspaceEditDto } from 'vs/workbench/api/node/extHost.protocol';
 import { URI } from 'vs/base/common/uri';
@@ -20,11 +19,11 @@ suite('ExtHostTextEditors.applyWorkspaceEdit', () => {
 	let workspaceResourceEdits: WorkspaceEditDto;
 
 	setup(() => {
-		workspaceResourceEdits = null;
+		workspaceResourceEdits = null!;
 
 		let rpcProtocol = new TestRPCProtocol();
 		rpcProtocol.set(MainContext.MainThreadTextEditors, new class extends mock<MainThreadTextEditorsShape>() {
-			$tryApplyWorkspaceEdit(_workspaceResourceEdits: WorkspaceEditDto): TPromise<boolean> {
+			$tryApplyWorkspaceEdit(_workspaceResourceEdits: WorkspaceEditDto): Promise<boolean> {
 				workspaceResourceEdits = _workspaceResourceEdits;
 				return Promise.resolve(true);
 			}

@@ -3,34 +3,33 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { localize } from 'vs/nls';
-import { URI } from 'vs/base/common/uri';
 import * as DOM from 'vs/base/browser/dom';
-import { TPromise } from 'vs/base/common/winjs.base';
-import { Disposable, IDisposable, dispose } from 'vs/base/common/lifecycle';
-import { Widget } from 'vs/base/browser/ui/widget';
-import { Event, Emitter } from 'vs/base/common/event';
 import { IKeyboardEvent, StandardKeyboardEvent } from 'vs/base/browser/keyboardEvent';
-import { KeyCode } from 'vs/base/common/keyCodes';
-import { ICodeEditor, IViewZone, IEditorMouseEvent, MouseTargetType } from 'vs/editor/browser/editorBrowser';
-import { InputBox, IInputOptions } from 'vs/base/browser/ui/inputbox/inputBox';
-import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';
-import { IContextViewService, IContextMenuService } from 'vs/platform/contextview/browser/contextView';
-import { ISettingsGroup } from 'vs/workbench/services/preferences/common/preferences';
-import { IWorkspaceContextService, WorkbenchState, IWorkspaceFolder } from 'vs/platform/workspace/common/workspace';
-import { IAction, Action } from 'vs/base/common/actions';
-import { attachInputBoxStyler, attachStylerCallback } from 'vs/platform/theme/common/styler';
-import { IThemeService, registerThemingParticipant, ITheme, ICssStyleCollector } from 'vs/platform/theme/common/themeService';
-import { Position } from 'vs/editor/common/core/position';
-import { ICursorPositionChangedEvent } from 'vs/editor/common/controller/cursorEvents';
-import { badgeForeground, badgeBackground, contrastBorder, errorForeground, focusBorder, activeContrastBorder } from 'vs/platform/theme/common/colorRegistry';
-import { IContextKey } from 'vs/platform/contextkey/common/contextkey';
 import { ActionBar, ActionsOrientation, BaseActionItem } from 'vs/base/browser/ui/actionbar/actionbar';
+import { IInputOptions, InputBox } from 'vs/base/browser/ui/inputbox/inputBox';
+import { Widget } from 'vs/base/browser/ui/widget';
+import { Action, IAction } from 'vs/base/common/actions';
+import { Emitter, Event } from 'vs/base/common/event';
 import { MarkdownString } from 'vs/base/common/htmlContent';
-import { ConfigurationTarget } from 'vs/platform/configuration/common/configuration';
+import { KeyCode } from 'vs/base/common/keyCodes';
+import { Disposable, dispose, IDisposable } from 'vs/base/common/lifecycle';
+import { URI } from 'vs/base/common/uri';
 import { IMarginData } from 'vs/editor/browser/controller/mouseTarget';
-import { PANEL_ACTIVE_TITLE_FOREGROUND, PANEL_ACTIVE_TITLE_BORDER, PANEL_INACTIVE_TITLE_FOREGROUND } from 'vs/workbench/common/theme';
+import { ICodeEditor, IEditorMouseEvent, IViewZone, MouseTargetType } from 'vs/editor/browser/editorBrowser';
+import { ICursorPositionChangedEvent } from 'vs/editor/common/controller/cursorEvents';
+import { Position } from 'vs/editor/common/core/position';
 import { IModelDeltaDecoration, TrackedRangeStickiness } from 'vs/editor/common/model';
+import { localize } from 'vs/nls';
+import { ConfigurationTarget } from 'vs/platform/configuration/common/configuration';
+import { IContextKey } from 'vs/platform/contextkey/common/contextkey';
+import { IContextMenuService, IContextViewService } from 'vs/platform/contextview/browser/contextView';
+import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';
+import { activeContrastBorder, badgeBackground, badgeForeground, contrastBorder, focusBorder } from 'vs/platform/theme/common/colorRegistry';
+import { attachInputBoxStyler, attachStylerCallback } from 'vs/platform/theme/common/styler';
+import { ICssStyleCollector, ITheme, IThemeService, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
+import { IWorkspaceContextService, IWorkspaceFolder, WorkbenchState } from 'vs/platform/workspace/common/workspace';
+import { PANEL_ACTIVE_TITLE_BORDER, PANEL_ACTIVE_TITLE_FOREGROUND, PANEL_INACTIVE_TITLE_FOREGROUND } from 'vs/workbench/common/theme';
+import { ISettingsGroup } from 'vs/workbench/services/preferences/common/preferences';
 
 export class SettingsHeaderWidget extends Widget implements IViewZone {
 
@@ -77,7 +76,7 @@ export class SettingsHeaderWidget extends Widget implements IViewZone {
 		});
 	}
 
-	public setMessage(message: string): void {
+	setMessage(message: string): void {
 		this.messageElement.textContent = message;
 	}
 
@@ -89,7 +88,7 @@ export class SettingsHeaderWidget extends Widget implements IViewZone {
 		}
 	}
 
-	public dispose() {
+	dispose() {
 		this.editor.changeViewZones(accessor => {
 			accessor.removeZone(this.id);
 		});
@@ -100,7 +99,7 @@ export class SettingsHeaderWidget extends Widget implements IViewZone {
 export class DefaultSettingsHeaderWidget extends SettingsHeaderWidget {
 
 	private _onClick = this._register(new Emitter<void>());
-	public readonly onClick: Event<void> = this._onClick.event;
+	readonly onClick: Event<void> = this._onClick.event;
 
 	protected create() {
 		super.create();
@@ -108,7 +107,7 @@ export class DefaultSettingsHeaderWidget extends SettingsHeaderWidget {
 		this.toggleMessage(true);
 	}
 
-	public toggleMessage(hasSettings: boolean): void {
+	toggleMessage(hasSettings: boolean): void {
 		if (hasSettings) {
 			this.setMessage(localize('defaultSettings', "Place your settings in the right hand side editor to override."));
 		} else {
@@ -128,7 +127,7 @@ export class SettingsGroupTitleWidget extends Widget implements IViewZone {
 	private title: HTMLElement;
 
 	private _onToggled = this._register(new Emitter<boolean>());
-	public readonly onToggled: Event<boolean> = this._onToggled.event;
+	readonly onToggled: Event<boolean> = this._onToggled.event;
 
 	private previousPosition: Position;
 
@@ -171,7 +170,12 @@ export class SettingsGroupTitleWidget extends Widget implements IViewZone {
 		this.layout();
 	}
 
-	public render() {
+	render() {
+		if (!this.settingsGroup.range) {
+			// #61352
+			return;
+		}
+
 		this._afterLineNumber = this.settingsGroup.range.startLineNumber - 2;
 		this.editor.changeViewZones(accessor => {
 			this.id = accessor.addZone(this);
@@ -179,15 +183,15 @@ export class SettingsGroupTitleWidget extends Widget implements IViewZone {
 		});
 	}
 
-	public toggleCollapse(collapse: boolean) {
+	toggleCollapse(collapse: boolean) {
 		DOM.toggleClass(this.titleContainer, 'collapsed', collapse);
 	}
 
-	public toggleFocus(focus: boolean): void {
+	toggleFocus(focus: boolean): void {
 		DOM.toggleClass(this.titleContainer, 'focused', focus);
 	}
 
-	public isCollapsed(): boolean {
+	isCollapsed(): boolean {
 		return DOM.hasClass(this.titleContainer, 'collapsed');
 	}
 
@@ -259,6 +263,10 @@ export class SettingsGroupTitleWidget extends Widget implements IViewZone {
 		if (previousPosition.lineNumber === currentPosition.lineNumber) {
 			return false;
 		}
+		if (!this.settingsGroup.range) {
+			// #60460?
+			return false;
+		}
 		if (currentPosition.lineNumber === this.settingsGroup.range.startLineNumber - 1 || currentPosition.lineNumber === this.settingsGroup.range.startLineNumber - 2) {
 			return true;
 		}
@@ -268,7 +276,7 @@ export class SettingsGroupTitleWidget extends Widget implements IViewZone {
 		return false;
 	}
 
-	public dispose() {
+	dispose() {
 		this.editor.changeViewZones(accessor => {
 			accessor.removeZone(this.id);
 		});
@@ -291,8 +299,8 @@ export class FolderSettingsActionItem extends BaseActionItem {
 
 	constructor(
 		action: IAction,
-		@IWorkspaceContextService private contextService: IWorkspaceContextService,
-		@IContextMenuService private contextMenuService: IContextMenuService
+		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
+		@IContextMenuService private readonly contextMenuService: IContextMenuService
 	) {
 		super(null, action);
 		const workspace = this.contextService.getWorkspace();
@@ -309,13 +317,13 @@ export class FolderSettingsActionItem extends BaseActionItem {
 		this.update();
 	}
 
-	public setCount(settingsTarget: URI, count: number): void {
+	setCount(settingsTarget: URI, count: number): void {
 		const folder = this.contextService.getWorkspaceFolder(settingsTarget).uri;
 		this._folderSettingCounts.set(folder.toString(), count);
 		this.update();
 	}
 
-	public render(container: HTMLElement): void {
+	render(container: HTMLElement): void {
 		this.element = container;
 
 		this.container = container;
@@ -327,6 +335,7 @@ export class FolderSettingsActionItem extends BaseActionItem {
 			'aria-haspopup': 'true',
 			'tabindex': '0'
 		}, this.labelElement, this.detailsElement, this.dropDownElement);
+		this._register(DOM.addDisposableListener(this.anchorElement, DOM.EventType.MOUSE_DOWN, e => DOM.EventHelper.stop(e)));
 		this.disposables.push(DOM.addDisposableListener(this.anchorElement, DOM.EventType.CLICK, e => this.onClick(e)));
 		this.disposables.push(DOM.addDisposableListener(this.anchorElement, DOM.EventType.KEY_UP, e => this.onKeyUp(e)));
 
@@ -345,7 +354,7 @@ export class FolderSettingsActionItem extends BaseActionItem {
 		}
 	}
 
-	public onClick(event: DOM.EventLike): void {
+	onClick(event: DOM.EventLike): void {
 		DOM.EventHelper.stop(event, true);
 		if (!this.folder || this._action.checked) {
 			this.showMenu();
@@ -406,7 +415,7 @@ export class FolderSettingsActionItem extends BaseActionItem {
 	private showMenu(): void {
 		this.contextMenuService.showContextMenu({
 			getAnchor: () => this.container,
-			getActions: () => TPromise.as(this.getDropdownMenuActions()),
+			getActions: () => this.getDropdownMenuActions(),
 			getActionItem: () => null,
 			onHide: () => {
 				this.anchorElement.blur();
@@ -441,7 +450,7 @@ export class FolderSettingsActionItem extends BaseActionItem {
 		return label;
 	}
 
-	public dispose(): void {
+	dispose(): void {
 		dispose(this.disposables);
 		super.dispose();
 	}
@@ -458,13 +467,13 @@ export class SettingsTargetsWidget extends Widget {
 
 	private _settingsTarget: SettingsTarget;
 
-	private readonly _onDidTargetChange: Emitter<SettingsTarget> = new Emitter<SettingsTarget>();
-	public readonly onDidTargetChange: Event<SettingsTarget> = this._onDidTargetChange.event;
+	private readonly _onDidTargetChange = new Emitter<SettingsTarget>();
+	readonly onDidTargetChange: Event<SettingsTarget> = this._onDidTargetChange.event;
 
 	constructor(
 		parent: HTMLElement,
-		@IWorkspaceContextService private contextService: IWorkspaceContextService,
-		@IInstantiationService private instantiationService: IInstantiationService
+		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService
 	) {
 		super();
 		this.create(parent);
@@ -495,11 +504,11 @@ export class SettingsTargetsWidget extends Widget {
 		this.settingsSwitcherBar.push([this.userSettings, this.workspaceSettings, folderSettingsAction]);
 	}
 
-	public get settingsTarget(): SettingsTarget {
+	get settingsTarget(): SettingsTarget {
 		return this._settingsTarget;
 	}
 
-	public set settingsTarget(settingsTarget: SettingsTarget) {
+	set settingsTarget(settingsTarget: SettingsTarget) {
 		this._settingsTarget = settingsTarget;
 		this.userSettings.checked = ConfigurationTarget.USER === this.settingsTarget;
 		this.workspaceSettings.checked = ConfigurationTarget.WORKSPACE === this.settingsTarget;
@@ -511,7 +520,7 @@ export class SettingsTargetsWidget extends Widget {
 		}
 	}
 
-	public setResultCount(settingsTarget: SettingsTarget, count: number): void {
+	setResultCount(settingsTarget: SettingsTarget, count: number): void {
 		if (settingsTarget === ConfigurationTarget.WORKSPACE) {
 			let label = localize('workspaceSettings', "Workspace Settings");
 			if (count) {
@@ -539,13 +548,13 @@ export class SettingsTargetsWidget extends Widget {
 		}
 	}
 
-	private updateTarget(settingsTarget: SettingsTarget): TPromise<void> {
+	updateTarget(settingsTarget: SettingsTarget): Promise<void> {
 		const isSameTarget = this.settingsTarget === settingsTarget || settingsTarget instanceof URI && this.settingsTarget instanceof URI && this.settingsTarget.toString() === settingsTarget.toString();
 		if (!isSameTarget) {
 			this.settingsTarget = settingsTarget;
 			this._onDidTargetChange.fire(this.settingsTarget);
 		}
-		return TPromise.as(null);
+		return Promise.resolve(undefined);
 	}
 
 	private update(): void {
@@ -565,7 +574,7 @@ export interface SearchOptions extends IInputOptions {
 
 export class SearchWidget extends Widget {
 
-	public domNode: HTMLElement;
+	domNode: HTMLElement;
 
 	private countElement: HTMLElement;
 	private searchContainer: HTMLElement;
@@ -573,15 +582,15 @@ export class SearchWidget extends Widget {
 	private controlsDiv: HTMLElement;
 
 	private readonly _onDidChange: Emitter<string> = this._register(new Emitter<string>());
-	public readonly onDidChange: Event<string> = this._onDidChange.event;
+	readonly onDidChange: Event<string> = this._onDidChange.event;
 
 	private readonly _onFocus: Emitter<void> = this._register(new Emitter<void>());
-	public readonly onFocus: Event<void> = this._onFocus.event;
+	readonly onFocus: Event<void> = this._onFocus.event;
 
 	constructor(parent: HTMLElement, protected options: SearchOptions,
-		@IContextViewService private contextViewService: IContextViewService,
+		@IContextViewService private readonly contextViewService: IContextViewService,
 		@IInstantiationService protected instantiationService: IInstantiationService,
-		@IThemeService private themeService: IThemeService
+		@IThemeService private readonly themeService: IThemeService
 	) {
 		super();
 		this.create(parent);
@@ -604,7 +613,8 @@ export class SearchWidget extends Widget {
 				this.countElement.style.borderStyle = border ? 'solid' : null;
 				this.countElement.style.borderColor = border;
 
-				this.styleCountElementForeground();
+				const color = this.themeService.getTheme().getColor(badgeForeground);
+				this.countElement.style.color = color ? color.toString() : null;
 			}));
 		}
 
@@ -635,24 +645,16 @@ export class SearchWidget extends Widget {
 		return box;
 	}
 
-	public showMessage(message: string, count: number): void {
+	showMessage(message: string): void {
 		// Avoid setting the aria-label unnecessarily, the screenreader will read the count every time it's set, since it's aria-live:assertive. #50968
 		if (this.countElement && message !== this.countElement.textContent) {
 			this.countElement.textContent = message;
 			this.inputBox.inputElement.setAttribute('aria-label', message);
-			DOM.toggleClass(this.countElement, 'no-results', count === 0);
 			this.inputBox.inputElement.style.paddingRight = this.getControlsWidth() + 'px';
-			this.styleCountElementForeground();
 		}
 	}
 
-	private styleCountElementForeground() {
-		const colorId = DOM.hasClass(this.countElement, 'no-results') ? errorForeground : badgeForeground;
-		const color = this.themeService.getTheme().getColor(colorId);
-		this.countElement.style.color = color ? color.toString() : null;
-	}
-
-	public layout(dimension: DOM.Dimension) {
+	layout(dimension: DOM.Dimension) {
 		if (dimension.width < 400) {
 			if (this.countElement) {
 				DOM.addClass(this.countElement, 'hide');
@@ -673,30 +675,30 @@ export class SearchWidget extends Widget {
 		return countWidth + 20;
 	}
 
-	public focus() {
+	focus() {
 		this.inputBox.focus();
 		if (this.getValue()) {
 			this.inputBox.select();
 		}
 	}
 
-	public hasFocus(): boolean {
+	hasFocus(): boolean {
 		return this.inputBox.hasFocus();
 	}
 
-	public clear() {
+	clear() {
 		this.inputBox.value = '';
 	}
 
-	public getValue(): string {
+	getValue(): string {
 		return this.inputBox.value;
 	}
 
-	public setValue(value: string): string {
+	setValue(value: string): string {
 		return this.inputBox.value = value;
 	}
 
-	public dispose(): void {
+	dispose(): void {
 		if (this.options.focusKey) {
 			this.options.focusKey.set(false);
 		}
@@ -706,15 +708,15 @@ export class SearchWidget extends Widget {
 
 export class EditPreferenceWidget<T> extends Disposable {
 
-	public static readonly GLYPH_MARGIN_CLASS_NAME = 'edit-preferences-widget';
+	static readonly GLYPH_MARGIN_CLASS_NAME = 'edit-preferences-widget';
 
 	private _line: number;
 	private _preferences: T[];
 
 	private _editPreferenceDecoration: string[];
 
-	private readonly _onClick: Emitter<IEditorMouseEvent> = new Emitter<IEditorMouseEvent>();
-	public get onClick(): Event<IEditorMouseEvent> { return this._onClick.event; }
+	private readonly _onClick = new Emitter<IEditorMouseEvent>();
+	get onClick(): Event<IEditorMouseEvent> { return this._onClick.event; }
 
 	constructor(private editor: ICodeEditor
 	) {
@@ -830,7 +832,7 @@ registerThemingParticipant((theme: ITheme, collector: ICssStyleCollector) => {
 				outline-style: solid;
 				border-bottom: none;
 				padding-bottom: 0;
-				outline-offset: 2px;
+				outline-offset: -1px;
 			}
 
 			.settings-tabs-widget > .monaco-action-bar .action-item .action-label:not(.checked):hover {

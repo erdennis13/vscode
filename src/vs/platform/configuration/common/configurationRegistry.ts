@@ -10,6 +10,7 @@ import { Registry } from 'vs/platform/registry/common/platform';
 import * as types from 'vs/base/common/types';
 import * as strings from 'vs/base/common/strings';
 import { IJSONContributionRegistry, Extensions as JSONExtensions } from 'vs/platform/jsonschemas/common/jsonContributionRegistry';
+import { ExtensionIdentifier } from 'vs/platform/extensions/common/extensions';
 
 export const Extensions = {
 	Configuration: 'base.contributions.configuration'
@@ -93,7 +94,7 @@ export interface IConfigurationNode {
 }
 
 export interface IDefaultConfigurationExtension {
-	id: string;
+	id: ExtensionIdentifier;
 	name: string;
 	defaults: { [key: string]: {} };
 }
@@ -115,7 +116,7 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 	private overrideIdentifiers: string[] = [];
 	private overridePropertyPattern: string;
 
-	private readonly _onDidSchemaChange: Emitter<void> = new Emitter<void>();
+	private readonly _onDidSchemaChange = new Emitter<void>();
 	readonly onDidSchemaChange: Event<void> = this._onDidSchemaChange.event;
 
 	private readonly _onDidRegisterConfiguration: Emitter<string[]> = new Emitter<string[]>();
@@ -161,7 +162,7 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 		this.updateOverridePropertyPatternKey();
 	}
 
-	private toConfiguration(defaultConfigurations: IDefaultConfigurationExtension[]): IConfigurationNode {
+	private toConfiguration(defaultConfigurations: IDefaultConfigurationExtension[]): IConfigurationNode | null {
 		const configurationNode: IConfigurationNode = {
 			id: 'defaultOverrides',
 			title: nls.localize('defaultConfigurations.title', "Default Configuration Overrides"),
@@ -171,7 +172,7 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 			for (const key in defaultConfiguration.defaults) {
 				const defaultValue = defaultConfiguration.defaults[key];
 				if (OVERRIDE_PROPERTY_PATTERN.test(key) && typeof defaultValue === 'object') {
-					configurationNode.properties[key] = {
+					configurationNode.properties![key] = {
 						type: 'object',
 						default: defaultValue,
 						description: nls.localize('overrideSettings.description', "Configure editor settings to be overridden for {0} language.", key),
@@ -180,13 +181,13 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 				}
 			}
 		}
-		return Object.keys(configurationNode.properties).length ? configurationNode : null;
+		return Object.keys(configurationNode.properties!).length ? configurationNode : null;
 	}
 
 	private validateAndRegisterProperties(configuration: IConfigurationNode, validate: boolean = true, scope: ConfigurationScope = ConfigurationScope.WINDOW, overridable: boolean = false): string[] {
 		scope = types.isUndefinedOrNull(configuration.scope) ? scope : configuration.scope;
 		overridable = configuration.overridable || overridable;
-		let propertyKeys = [];
+		let propertyKeys: string[] = [];
 		let properties = configuration.properties;
 		if (properties) {
 			for (let key in properties) {
@@ -208,7 +209,7 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 				}
 
 				if (OVERRIDE_PROPERTY_PATTERN.test(key)) {
-					property.scope = void 0; // No scope for overridable properties `[${identifier}]`
+					property.scope = undefined; // No scope for overridable properties `[${identifier}]`
 				} else {
 					property.scope = types.isUndefinedOrNull(property.scope) ? scope : property.scope;
 				}
@@ -313,7 +314,7 @@ class ConfigurationRegistry implements IConfigurationRegistry {
 		if (properties) {
 			for (let key in properties) {
 				if (properties[key].overridable) {
-					this.editorConfigurationSchema.properties[key] = this.getConfigurationProperties()[key];
+					this.editorConfigurationSchema.properties![key] = this.getConfigurationProperties()[key];
 				}
 			}
 		}
@@ -333,7 +334,7 @@ const OVERRIDE_PROPERTY = '\\[.*\\]$';
 const OVERRIDE_PATTERN_WITH_SUBSTITUTION = '\\[(${0})\\]$';
 export const OVERRIDE_PROPERTY_PATTERN = new RegExp(OVERRIDE_PROPERTY);
 
-function getDefaultValue(type: string | string[]): any {
+export function getDefaultValue(type: string | string[] | undefined): any {
 	const t = Array.isArray(type) ? (<string[]>type)[0] : <string>type;
 	switch (t) {
 		case 'boolean':
@@ -356,11 +357,11 @@ function getDefaultValue(type: string | string[]): any {
 const configurationRegistry = new ConfigurationRegistry();
 Registry.add(Extensions.Configuration, configurationRegistry);
 
-export function validateProperty(property: string): string {
+export function validateProperty(property: string): string | null {
 	if (OVERRIDE_PROPERTY_PATTERN.test(property)) {
 		return nls.localize('config.property.languageDefault', "Cannot register '{0}'. This matches property pattern '\\\\[.*\\\\]$' for describing language specific editor settings. Use 'configurationDefaults' contribution.", property);
 	}
-	if (configurationRegistry.getConfigurationProperties()[property] !== void 0) {
+	if (configurationRegistry.getConfigurationProperties()[property] !== undefined) {
 		return nls.localize('config.property.duplicate', "Cannot register '{0}'. This property is already registered.", property);
 	}
 	return null;
