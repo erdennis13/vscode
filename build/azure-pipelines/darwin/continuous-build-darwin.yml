@@ -14,7 +14,7 @@ steps:
   displayName: Cache
   inputs:
     key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock,!**/.*/**/yarn.lock | salt.txt'
-    path: '**/node_modules, !**/node_modules/**/node_modules'
+    path: '$(Pipeline.Workspace)/yarn | **/node_modules, !**/node_modules/**/node_modules'
     cacheHitVar: 'PACKAGES_RESTORED'
 - script: |
     CHILD_CONCURRENCY=1 yarn --frozen-lockfile
