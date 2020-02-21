@@ -18,14 +18,14 @@ steps:
   displayName: Cache
   inputs:
     key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock,!**/.*/**/yarn.lock | salt.txt'
-    path: '**/node_modules, !**/node_modules/**/node_modules'
+    path: '$(Pipeline.Workspace)/yarn | **/node_modules, !**/node_modules/**/node_modules'
     cacheHitVar: 'PACKAGES_RESTORED'
 - powershell: |
     yarn --frozen-lockfile
   env:
     CHILD_CONCURRENCY: "1"
   displayName: Install Dependencies
-  condition: and(succeeded(), ne(variables['CacheRestored'], 'true'))
+  condition: ne(variables['CacheRestored'], 'true')
 # - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
 #   inputs:
 #     keyfile: '.yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock'
