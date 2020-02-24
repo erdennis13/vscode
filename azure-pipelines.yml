@@ -11,8 +11,8 @@ jobs:
 #   steps:
 #   - template: build/azure-pipelines/linux/continuous-build-linux.yml
 
-# - job: macOS
-#   pool:
-#     name: dev # ethan's dev machine
-#   steps:
-#   - template: build/azure-pipelines/darwin/continuous-build-darwin.yml
+- job: macOS
+  pool:
+    name: dev # ethan's dev machine
+  steps:
+  - template: build/azure-pipelines/darwin/continuous-build-darwin.yml

@@ -2,16 +2,11 @@ steps:
 - task: NodeTool@0
   inputs:
     versionSpec: "12.13.0"
-# - task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
-#   inputs:
-#     keyfile: '.yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock'
-#     targetfolder: '**/node_modules, !**/node_modules/**/node_modules'
-#     vstsFeed: 'vscode-build-cache'
 - task: Cache@2
   displayName: Cache
   inputs:
     key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock,!**/.*/**/yarn.lock | salt.txt'
-    path: '$(Pipeline.Workspace)/yarn | **/node_modules, !**/node_modules/**/node_modules'
+    path: '$(Pipeline.Workspace)/yarn | **/node_modules'
     cacheHitVar: 'PACKAGES_RESTORED'
 - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
   inputs:
@@ -21,12 +16,6 @@ steps:
     CHILD_CONCURRENCY=1 yarn --frozen-lockfile
   displayName: Install Dependencies
   condition: ne(variables['PACKAGES_RESTORED'], 'true')
-# - task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
-#   inputs:
-#     keyfile: '.yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock'
-#     targetfolder: '**/node_modules, !**/node_modules/**/node_modules'
-#     vstsFeed: 'vscode-build-cache'
-#   condition: and(succeeded(), ne(variables['CacheRestored'], 'true'))
 - script: |
     yarn electron x64
   displayName: Download Electron
