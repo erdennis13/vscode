@@ -5,8 +5,8 @@ steps:
 - task: Cache@2
   displayName: Cache
   inputs:
-    key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock,!**/.*/**/yarn.lock | salt.txt'
-    path: '$(Pipeline.Workspace)/yarn | **/node_modules'
+    key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock | salt.txt'
+    path: '$(Pipeline.Workspace)/yarn | **/node_modules,!**/node_modules/**/node_modules'
     cacheHitVar: 'PACKAGES_RESTORED'
 - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
   inputs:
