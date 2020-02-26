@@ -6,7 +6,7 @@ steps:
   displayName: Cache
   inputs:
     key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock | salt.txt'
-    path: '**/node_modules,!**/node_modules/**/node_modules'
+    path: 'yarn | **/node_modules,!**/node_modules/**/node_modules'
     cacheHitVar: 'PACKAGES_RESTORED'
 - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
   inputs:
@@ -48,3 +48,22 @@ steps:
     testResultsFiles: '*-results.xml'
     searchFolder: '$(Build.ArtifactStagingDirectory)/test-results'
   condition: succeededOrFailed()
+
+warningMessages.AddRange(destaledPoliciesResults.DestaleWarnings.Where(x => x.Path == destaleResult.Path).Select(x => $" - {x.Message}"));
+
+foreach (var destaleResult in destaledPoliciesResults.DestaleWarnings)
+{
+  warningMessages.Add($"Removing stale content from policy file: {destaleResult.Path}");
+
+  var warnings = new List<string>();
+  foreach (var warning in destaledPoliciesResults.DestaleWarnings)
+  {
+    if (warning.Path == destaleResult.Path)
+      warnings.Add(warning);
+  }
+
+  foreach (var warning in warnings)
+  {
+    warningMessages.Add($" - {warning.Message}");
+  }
+}
