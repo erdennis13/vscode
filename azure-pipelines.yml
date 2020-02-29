@@ -1,9 +1,15 @@
 jobs:
-- job: Windows
+- job: noop
   pool:
-    name: dev-windows # ethan's dev machine
+    vmImage: ubuntu-latest
   steps:
-  - template: build/azure-pipelines/win32/continuous-build-win32.yml
+    - script: |
+        echo Hello world
+# - job: Windows
+#   pool:
+#     name: dev-windows # ethan's dev machine
+#   steps:
+#   - template: build/azure-pipelines/win32/continuous-build-win32.yml
 
 # - job: Linux
 #   pool:
@@ -11,8 +17,8 @@ jobs:
 #   steps:
 #   - template: build/azure-pipelines/linux/continuous-build-linux.yml
 
-- job: macOS
-  pool:
-    name: dev # ethan's dev machine
-  steps:
-  - template: build/azure-pipelines/darwin/continuous-build-darwin.yml
+# - job: macOS
+#   pool:
+#     name: dev # ethan's dev machine
+#   steps:
+#   - template: build/azure-pipelines/darwin/continuous-build-darwin.yml

@@ -35,7 +35,7 @@ jobs:
       id: cache-packages
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
     - run: yarn --frozen-lockfile
       if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
@@ -75,7 +75,7 @@ jobs:
       id: cache-packages
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**\package-lock.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('**\yarn.lock') }}
     - run: yarn --frozen-lockfile
       if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
@@ -112,7 +112,7 @@ jobs:
       id: cache-packages
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
     - run: yarn --frozen-lockfile
       if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
