@@ -31,7 +31,13 @@ jobs:
       with:
         node-version: 10
     # TODO: cache node modules
+    - uses: actions/cache@v1
+      id: cache-packages
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
     - run: yarn --frozen-lockfile
+      if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
     - run: yarn electron x64
       name: Download Electron
@@ -65,7 +71,13 @@ jobs:
     - uses: actions/setup-python@v1
       with:
         python-version: '2.x'
+    - uses: actions/cache@v1
+      id: cache-packages
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**\package-lock.json') }}
     - run: yarn --frozen-lockfile
+      if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
     - run: yarn electron
       name: Download Electron
@@ -96,7 +108,13 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: 10
+    - uses: actions/cache@v1
+      id: cache-packages
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
     - run: yarn --frozen-lockfile
+      if: steps.cache-packages.outputs.cache-hit != 'true'
       name: Install Dependencies
     - run: yarn electron x64
       name: Download Electron
