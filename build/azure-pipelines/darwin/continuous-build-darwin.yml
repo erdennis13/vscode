@@ -2,12 +2,17 @@ steps:
 - task: NodeTool@0
   inputs:
     versionSpec: "12.13.0"
+# - task: Cache@2
+#   displayName: Cache
+#   inputs:
+#     key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock | salt.txt'
+#     path: '**/node_modules,!**/node_modules/**/node_modules'
+#     cacheHitVar: 'PACKAGES_RESTORED'
 - task: Cache@2
   displayName: Cache
   inputs:
-    key: '$(Agent.OS) | yarn | .yarnrc | remote/.yarnrc | **/yarn.lock,!**/node_modules/**/yarn.lock | salt.txt'
-    path: '**/node_modules,!**/node_modules/**/node_modules'
-    cacheHitVar: 'PACKAGES_RESTORED'
+    key: '$(Agent.OS) | yarn | foo | salt.txt'
+    path: '$(Pipeline.Workspace)/yarn'
 - task: geeklearningio.gl-vsts-tasks-yarn.yarn-installer-task.YarnInstaller@2
   inputs:
     versionSpec: "1.x"
@@ -18,33 +23,33 @@ steps:
 - script: |
     yarn electron x64
   displayName: Download Electron
-- script: |
-    yarn gulp hygiene
-  displayName: Run Hygiene Checks
-- script: |
-    yarn monaco-compile-check
-  displayName: Run Monaco Editor Checks
-- script: |
-    yarn valid-layers-check
-  displayName: Run Valid Layers Checks
-- script: |
-    yarn compile
-  displayName: Compile Sources
-- script: |
-    yarn download-builtin-extensions
-  displayName: Download Built-in Extensions
-- script: |
-    ./scripts/test.sh --tfs "Unit Tests"
-  displayName: Run Unit Tests (Electron)
-- script: |
-    yarn test-browser --browser chromium --browser webkit
-  displayName: Run Unit Tests (Browser)
-- script: |
-    ./scripts/test-integration.sh --tfs "Integration Tests"
-  displayName: Run Integration Tests (Electron)
-- task: PublishTestResults@2
-  displayName: Publish Tests Results
-  inputs:
-    testResultsFiles: '*-results.xml'
-    searchFolder: '$(Build.ArtifactStagingDirectory)/test-results'
-  condition: succeededOrFailed()
+# - script: |
+#     yarn gulp hygiene
+#   displayName: Run Hygiene Checks
+# - script: |
+#     yarn monaco-compile-check
+#   displayName: Run Monaco Editor Checks
+# - script: |
+#     yarn valid-layers-check
+#   displayName: Run Valid Layers Checks
+# - script: |
+#     yarn compile
+#   displayName: Compile Sources
+# - script: |
+#     yarn download-builtin-extensions
+#   displayName: Download Built-in Extensions
+# - script: |
+#     ./scripts/test.sh --tfs "Unit Tests"
+#   displayName: Run Unit Tests (Electron)
+# - script: |
+#     yarn test-browser --browser chromium --browser webkit
+#   displayName: Run Unit Tests (Browser)
+# - script: |
+#     ./scripts/test-integration.sh --tfs "Integration Tests"
+#   displayName: Run Integration Tests (Electron)
+# - task: PublishTestResults@2
+#   displayName: Publish Tests Results
+#   inputs:
+#     testResultsFiles: '*-results.xml'
+#     searchFolder: '$(Build.ArtifactStagingDirectory)/test-results'
+#   condition: succeededOrFailed()
